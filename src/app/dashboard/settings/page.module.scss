@@ -1,0 +1,15 @@
+.container {
+  padding: 2rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.settingsForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}

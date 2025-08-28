@@ -1,9 +1,16 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/Button"
 import Link from "next/link"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select"
 import { useState, useEffect } from "react"
+import styles from "./Sidebar.module.scss"
 
 export default function Sidebar() {
   const [theme, setTheme] = useState<string | undefined>(undefined)
@@ -37,7 +44,9 @@ export default function Sidebar() {
     } else if (newTheme === "dark") {
       root.classList.add("dark")
     } else {
-      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+      const systemDark = window.matchMedia(
+        "(prefers-color-scheme: dark)",
+      ).matches
       if (systemDark) {
         root.classList.add("dark")
       } else {
@@ -47,32 +56,38 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 bg-background-sidebar border-r h-screen">
-      <div className="p-4">
-        <h2 className="text-lg font-bold">Runway API Playground</h2>
+    <aside className={styles.sidebar}>
+      <div className={styles.sidebarHeader}>
+        <h2 className={styles.sidebarTitle}>Runway API Playground</h2>
       </div>
-      <nav className="p-4">
-        <ul className="space-y-2">
+      <nav className={styles.sidebarNav}>
+        <ul className={styles.sidebarList}>
           <li>
             <Link href="/dashboard">
-              <Button variant="ghost" className="w-full justify-start">Playground</Button>
+              <Button variant="ghost" className={styles.sidebarButton}>
+                Playground
+              </Button>
             </Link>
           </li>
           <li>
             <Link href="/dashboard/gallery">
-              <Button variant="ghost" className="w-full justify-start">Gallery</Button>
+              <Button variant="ghost" className={styles.sidebarButton}>
+                Gallery
+              </Button>
             </Link>
           </li>
           <li>
             <Link href="/dashboard/settings">
-              <Button variant="ghost" className="w-full justify-start">Settings</Button>
+              <Button variant="ghost" className={styles.sidebarButton}>
+                Settings
+              </Button>
             </Link>
           </li>
         </ul>
       </nav>
-      <div className="p-4 mt-auto">
+      <div className={styles.sidebarFooter}>
         <Select value={theme || "system"} onValueChange={setThemeFunc}>
-          <SelectTrigger className="w-full justify-start">
+          <SelectTrigger className={styles.sidebarSelectTrigger}>
             <SelectValue placeholder="Theme" />
           </SelectTrigger>
           <SelectContent>

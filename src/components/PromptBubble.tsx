@@ -2,27 +2,64 @@
 
 import { useState, useEffect } from "react"
 import { Prompt } from "@/app/dashboard/chat/[id]/page" // Assuming Prompt interface is exported from page.tsx, adjust if needed
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/Textarea"
+import { Button } from "@/components/ui/Button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select"
+import { Card, CardContent } from "@/components/ui/Card"
 import { toast } from "sonner"
-import { Input } from "@/components/ui/input"
+import { Input } from "@/components/ui/Input"
+
+import styles from "./PromptBubble.module.scss"
 
 interface PromptBubbleProps {
   prompt?: Prompt
-  onGenerate?: (data: { text: string; model: Prompt["model"]; generationType: Prompt["generation_type"]; files: File[] }) => Promise<void>
-  onEdit?: (promptId: string, data: { text: string; model: Prompt["model"]; generationType: Prompt["generation_type"]; existingMedia: { id: string; path: string; url: string; type: "image" | "video" }[]; newFiles: File[] }) => Promise<void>
+  onGenerate?: (data: {
+    text: string
+    model: Prompt["model"]
+    generationType: Prompt["generation_type"]
+    files: File[]
+  }) => Promise<void>
+  onEdit?: (
+    promptId: string,
+    data: {
+      text: string
+      model: Prompt["model"]
+      generationType: Prompt["generation_type"]
+      existingMedia: {
+        id: string
+        path: string
+        url: string
+        type: "image" | "video"
+      }[]
+      newFiles: File[]
+    },
+  ) => Promise<void>
   onDelete?: (promptId: string) => Promise<void>
 }
 
-export default function PromptBubble({ prompt, onGenerate, onEdit, onDelete }: PromptBubbleProps) {
+export default function PromptBubble({
+  prompt,
+  onGenerate,
+  onEdit,
+  onDelete,
+}: PromptBubbleProps) {
   const isNew = !prompt
-  const [mode, setMode] = useState<"view" | "edit" | "input" | "loading">(isNew ? "input" : "view")
+  const [mode, setMode] = useState<"view" | "edit" | "input" | "loading">(
+    isNew ? "input" : "view",
+  )
   const [text, setText] = useState("")
   const [model, setModel] = useState<Prompt["model"]>("gen4_turbo")
-  const [generationType, setGenerationType] = useState<Prompt["generation_type"]>("video")
-  const [existingMedia, setExistingMedia] = useState<{ id: string; path: string; url: string; type: "image" | "video" }[]>([])
+  const [generationType, setGenerationType] =
+    useState<Prompt["generation_type"]>("video")
+  const [existingMedia, setExistingMedia] = useState<
+    { id: string; path: string; url: string; type: "image" | "video" }[]
+  >([])
   const [newFiles, setNewFiles] = useState<File[]>([])
 
   useEffect(() => {
@@ -60,7 +97,13 @@ export default function PromptBubble({ prompt, onGenerate, onEdit, onDelete }: P
         setMode("input")
       } else {
         if (!onEdit || !prompt) return
-        await onEdit(prompt.id, { text, model, generationType, existingMedia, newFiles })
+        await onEdit(prompt.id, {
+          text,
+          model,
+          generationType,
+          existingMedia,
+          newFiles,
+        })
         setMode("view")
       }
     } catch (err) {
@@ -75,50 +118,77 @@ export default function PromptBubble({ prompt, onGenerate, onEdit, onDelete }: P
 
   return (
     <Card>
-      <CardContent className="p-4">
+      <CardContent className={styles.promptContent}>
         {mode === "loading" ? (
-          <p className="text-center">Generating...</p>
+          <p className={styles.loadingText}>Generating...</p>
         ) : mode === "view" && prompt ? (
           <>
             {prompt.media?.some((m) => m.category === "input") && (
-              <div className="mt-2 space-y-2">
-                <p className="font-semibold">Inputs:</p>
-                {prompt.media.filter((m) => m.category === "input").map((m, index) => (
+              <div className={styles.inputSection}>
+                <p className={styles.sectionTitle}>Inputs:</p>
+                {prompt.media
+                  .filter((m) => m.category === "input")
+                  .map((m, index) => (
+                    <div key={index}>
+                      {m.type === "image" ? (
+                        <img
+                          src={m.url}
+                          alt="Input"
+                          className={styles.mediaImage}
+                        />
+                      ) : (
+                        <video
+                          src={m.url}
+                          controls
+                          className={styles.mediaVideo}
+                        />
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+            <p className={styles.promptText}>{prompt.prompt_text}</p>
+            <div className={styles.outputSection}>
+              {prompt.media
+                ?.filter((m) => m.category === "output")
+                .map((m, index) => (
                   <div key={index}>
                     {m.type === "image" ? (
-                      <img src={m.url} alt="Input" className="max-w-full" />
+                      <img
+                        src={m.url}
+                        alt="Generated"
+                        className={styles.mediaImage}
+                      />
                     ) : (
-                      <video src={m.url} controls className="max-w-full" />
+                      <video
+                        src={m.url}
+                        controls
+                        className={styles.mediaVideo}
+                      />
                     )}
                   </div>
                 ))}
-              </div>
-            )}
-            <p className="font-semibold mt-2">{prompt.prompt_text}</p>
-            <div className="mt-2 space-y-2">
-              {prompt.media?.filter((m) => m.category === "output").map((m, index) => (
-                <div key={index}>
-                  {m.type === "image" ? (
-                    <img src={m.url} alt="Generated" className="max-w-full" />
-                  ) : (
-                    <video src={m.url} controls className="max-w-full" />
-                  )}
-                </div>
-              ))}
             </div>
-            <div className="mt-2 flex gap-2">
+            <div className={styles.actionButtons}>
               <Button variant="outline" size="sm" onClick={handleEnterEdit}>
                 Edit
               </Button>
-              <Button variant="destructive" size="sm" onClick={() => onDelete?.(prompt.id)}>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => onDelete?.(prompt.id)}
+              >
                 Delete
               </Button>
             </div>
           </>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Select value={model ?? ""} onValueChange={(v) => setModel(v as typeof model)}>
-              <SelectTrigger className="w-[120px]">
+          <form onSubmit={handleSubmit} className={styles.promptForm}>
+            <Select
+              value={model ?? ""}
+              onValueChange={(v) => setModel(v as typeof model)}
+            >
+              <SelectTrigger className={styles.selectModel}>
                 <SelectValue placeholder="Model" />
               </SelectTrigger>
               <SelectContent>
@@ -131,8 +201,14 @@ export default function PromptBubble({ prompt, onGenerate, onEdit, onDelete }: P
                 <SelectItem value="upscale_v1">Upscale V1</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={generationType ?? ""} onValueChange={(v) => setGenerationType(v as typeof generationType)} disabled={model === "upscale_v1"}>
-              <SelectTrigger className="w-[100px]">
+            <Select
+              value={generationType ?? ""}
+              onValueChange={(v) =>
+                setGenerationType(v as typeof generationType)
+              }
+              disabled={model === "upscale_v1"}
+            >
+              <SelectTrigger className={styles.selectType}>
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
@@ -144,13 +220,25 @@ export default function PromptBubble({ prompt, onGenerate, onEdit, onDelete }: P
               <div>
                 <p>Existing Inputs:</p>
                 {existingMedia.map((media, index) => (
-                  <div key={index} className="flex items-center space-x-2 mt-2">
+                  <div key={index} className={styles.existingMediaItem}>
                     {media.type === "image" ? (
-                      <img src={media.url} alt="Input" className="max-w-[100px]" />
+                      <img
+                        src={media.url}
+                        alt="Input"
+                        className={styles.smallMediaImage}
+                      />
                     ) : (
-                      <video src={media.url} controls className="max-w-[100px]" />
+                      <video
+                        src={media.url}
+                        controls
+                        className={styles.smallMediaVideo}
+                      />
                     )}
-                    <Button variant="destructive" size="sm" onClick={() => handleRemoveExisting(index)}>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRemoveExisting(index)}
+                    >
                       Remove
                     </Button>
                   </div>
@@ -167,12 +255,20 @@ export default function PromptBubble({ prompt, onGenerate, onEdit, onDelete }: P
               <Textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder={isNew ? "Enter your prompt..." : "Edit your prompt..."}
+                placeholder={
+                  isNew ? "Enter your prompt..." : "Edit your prompt..."
+                }
               />
             )}
-            <div className="flex gap-2">
-              <Button type="submit">{isNew ? "Generate" : "Save and Re-generate"}</Button>
-              {!isNew && <Button variant="outline" onClick={handleCancel}>Cancel</Button>}
+            <div className={styles.formButtons}>
+              <Button type="submit">
+                {isNew ? "Generate" : "Save and Re-generate"}
+              </Button>
+              {!isNew && (
+                <Button variant="outline" onClick={handleCancel}>
+                  Cancel
+                </Button>
+              )}
             </div>
           </form>
         )}

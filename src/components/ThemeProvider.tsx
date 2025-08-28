@@ -12,8 +12,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         root.classList.remove("dark")
       } else if (theme === "dark") {
         root.classList.add("dark")
-      } else { // system
-        const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+      } else {
+        // system
+        const systemDark = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches
         if (systemDark) {
           root.classList.add("dark")
         } else {

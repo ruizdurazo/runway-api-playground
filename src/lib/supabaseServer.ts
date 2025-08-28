@@ -1,5 +1,5 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextRequest } from 'next/server'
+import { createServerClient } from "@supabase/ssr"
+import { NextRequest } from "next/server"
 
 export function createSupabaseServerClient(request: NextRequest) {
   const cookieStore = request.cookies
@@ -13,12 +13,14 @@ export function createSupabaseServerClient(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value }) => cookieStore.set(name, value))
+            cookiesToSet.forEach(({ name, value }) =>
+              cookieStore.set(name, value),
+            )
           } catch {
             // Ignore if called from Server Component
           }
         },
       },
-    }
+    },
   )
 }

@@ -1,13 +1,15 @@
-'use client';
+"use client"
 
-import { Auth } from '@supabase/auth-ui-react'
-import { ThemeSupa } from '@supabase/auth-ui-shared'
-import { supabase } from '@/lib/supabase'
+import { Auth } from "@supabase/auth-ui-react"
+import { ThemeSupa } from "@supabase/auth-ui-shared"
+import { supabase } from "@/lib/supabase"
+
+import styles from "./page.module.scss"
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className={styles.container}>
+      <div className={styles.authWrapper}>
         <Auth
           supabaseClient={supabase}
           appearance={{ theme: ThemeSupa }}

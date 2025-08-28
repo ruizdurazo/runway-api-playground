@@ -1,0 +1,24 @@
+.toaster {
+  // Base toaster styles if needed
+}
+
+.toast {
+  background-color: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.toastDescription {
+  color: var(--muted-foreground);
+}
+
+.toastActionButton {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.toastCancelButton {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+}

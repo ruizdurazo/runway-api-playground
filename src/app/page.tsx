@@ -1,10 +1,12 @@
 import Link from "next/link"
 
+import styles from "./page.module.scss"
+
 export default function Home() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <h1 className="text-4xl font-bold mb-8">Welcome to Runway API Playground</h1>
-      <Link href="/login" className="px-6 py-3 bg-primary text-primary-foreground rounded-md text-lg font-medium hover:bg-primary/90">
+    <div className={styles.container}>
+      <h1 className={styles.title}>Welcome to Runway API Playground</h1>
+      <Link href="/login" className={styles.loginButton}>
         Login
       </Link>
     </div>

@@ -1,0 +1,78 @@
+.promptContent {
+  padding: 1rem;
+}
+
+.loadingText {
+  text-align: center;
+}
+
+.inputSection {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sectionTitle {
+  font-weight: 600;
+}
+
+.mediaImage {
+  max-width: 100%;
+}
+
+.mediaVideo {
+  max-width: 100%;
+}
+
+.promptText {
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.outputSection {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.actionButtons {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.promptForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.selectModel {
+  width: 120px;
+}
+
+.selectType {
+  width: 100px;
+}
+
+.existingMediaItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.smallMediaImage {
+  max-width: 100px;
+}
+
+.smallMediaVideo {
+  max-width: 100px;
+}
+
+.formButtons {
+  display: flex;
+  gap: 0.5rem;
+}
