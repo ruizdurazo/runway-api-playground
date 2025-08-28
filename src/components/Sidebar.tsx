@@ -57,9 +57,15 @@ export default function Sidebar() {
 
   return (
     <aside className={styles.sidebar}>
+      {/* Header */}
       <div className={styles.sidebarHeader}>
         <h2 className={styles.sidebarTitle}>Runway API Playground</h2>
       </div>
+
+      {/* Divider */}
+      <div className={styles.sidebarDivider} />
+
+      {/* Nav */}
       <nav className={styles.sidebarNav}>
         <ul className={styles.sidebarList}>
           <li>
@@ -85,6 +91,8 @@ export default function Sidebar() {
           </li>
         </ul>
       </nav>
+
+      {/* Footer */}
       <div className={styles.sidebarFooter}>
         <Select value={theme || "system"} onValueChange={setThemeFunc}>
           <SelectTrigger className={styles.sidebarSelectTrigger}>
