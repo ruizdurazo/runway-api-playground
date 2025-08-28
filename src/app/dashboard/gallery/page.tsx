@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 interface MediaItem {
   id: string
@@ -9,6 +11,7 @@ interface MediaItem {
   url: string
   type: 'image' | 'video'
   created_at: string
+  prompts?: { chat_id: string }
 }
 
 export default function GalleryPage() {
@@ -20,7 +23,7 @@ export default function GalleryPage() {
       if (user) {
         const { data, error } = await supabase
           .from('media')
-          .select('*')
+          .select('*, prompts(chat_id)')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
         if (error) {
@@ -39,15 +42,22 @@ export default function GalleryPage() {
   }, [])
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">My Media Gallery</h1>
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-4">Media Gallery</h1>
       <div className="grid grid-cols-3 gap-4">
         {media.map((item) => (
-          <div key={item.id} className="aspect-video bg-muted rounded-lg overflow-hidden">
+          <div key={item.id} className="aspect-video bg-muted rounded-lg overflow-hidden relative group">
             {item.type === 'image' ? (
               <img src={item.url} alt="Generated image" className="object-cover w-full h-full" />
             ) : (
               <video src={item.url} controls className="w-full h-full" />
+            )}
+            {item.prompts?.chat_id && (
+              <div className="absolute top-2 right-2 hidden group-hover:block">
+                <Link href={`/dashboard/chat/${item.prompts.chat_id}`}>
+                  <Button size="sm">View Chat</Button>
+                </Link>
+              </div>
             )}
           </div>
         ))}

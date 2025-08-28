@@ -6,10 +6,12 @@ import { Label } from "@/components/ui/label"
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 export default function SettingsPage() {
   const [name, setName] = useState("")
   const [apiKey, setApiKey] = useState("")
+  const router = useRouter()
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -35,8 +37,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Settings</h1>
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-4">User Settings</h1>
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>
           <Label htmlFor="name">Name</Label>
@@ -47,6 +49,10 @@ export default function SettingsPage() {
           <Input id="api-key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
         </div>
         <Button type="submit">Save</Button>
+        <Button variant="ghost" onClick={async () => {
+          await supabase.auth.signOut()
+          router.push("/login")
+        }}>Logout</Button>
       </form>
     </div>
   )

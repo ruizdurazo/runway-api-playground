@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
         throw new Error("Upscale requires exactly one video input")
       }
       const videoParams = {
-        promptVideo: assetUrls[0],
+        model: 'upscale_v1',
+        videoUri: assetUrls[0],
       }
       // @ts-expect-error - Model type mismatch
       const task = await client.videoUpscale.create(videoParams).waitForTaskOutput()
