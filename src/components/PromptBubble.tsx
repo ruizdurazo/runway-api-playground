@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Prompt } from "@/app/dashboard/chat/[id]/page" // Assuming Prompt interface is exported from page.tsx, adjust if needed
+import { Prompt } from "@/app/dashboard/chat/[id]/client"
 import { Textarea } from "@/components/ui/Textarea"
 import { Button } from "@/components/ui/Button"
 import {
@@ -192,11 +192,10 @@ export default function PromptBubble({
                 <SelectValue placeholder="Model" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gen2">Gen-2</SelectItem>
-                <SelectItem value="gen3a">Gen-3 Alpha</SelectItem>
                 <SelectItem value="gen4_aleph">Gen-4 Aleph</SelectItem>
                 <SelectItem value="gen4_turbo">Gen-4 Turbo</SelectItem>
                 <SelectItem value="gen4_image">Gen-4 Image</SelectItem>
+                <SelectItem value="gen4_image_turbo">Gen-4 Image Turbo</SelectItem>
                 <SelectItem value="act_two">Act-Two</SelectItem>
                 <SelectItem value="upscale_v1">Upscale V1</SelectItem>
               </SelectContent>

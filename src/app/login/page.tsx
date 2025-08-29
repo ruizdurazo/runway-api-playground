@@ -1,21 +1,12 @@
-"use client"
+import type { Metadata } from "next"
 
-import { Auth } from "@supabase/auth-ui-react"
-import { ThemeSupa } from "@supabase/auth-ui-shared"
-import { supabase } from "@/lib/supabase"
+import Client from "./client"
 
-import styles from "./page.module.scss"
+export const metadata: Metadata = {
+  title: "Login - Runway API Playground",
+  description: "Log in to access your Runway API Playground account and start generating AI content."
+}
 
-export default function LoginPage() {
-  return (
-    <div className={styles.container}>
-      <div className={styles.authWrapper}>
-        <Auth
-          supabaseClient={supabase}
-          appearance={{ theme: ThemeSupa }}
-          providers={[]}
-        />
-      </div>
-    </div>
-  )
+export default function Page() {
+  return <Client />
 }

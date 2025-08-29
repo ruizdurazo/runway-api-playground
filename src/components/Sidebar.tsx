@@ -11,9 +11,11 @@ import {
 } from "@/components/ui/Select"
 import { useState, useEffect } from "react"
 import styles from "./Sidebar.module.scss"
+import { usePathname } from "next/navigation"
 
 export default function Sidebar() {
   const [theme, setTheme] = useState<string | undefined>(undefined)
+  const pathname = usePathname()
 
   useEffect(() => {
     const stored = localStorage.getItem("theme") || "system"
@@ -58,39 +60,50 @@ export default function Sidebar() {
   return (
     <aside className={styles.sidebar}>
       {/* Header */}
-      <div className={styles.sidebarHeader}>
-        <h2 className={styles.sidebarTitle}>Runway API Playground</h2>
+      <div>
+        <div className={styles.sidebarHeader}>
+          <h2 className={styles.sidebarTitle}>Runway API Playground</h2>
+        </div>
+
+        {/* Divider */}
+        <div className={styles.sidebarDivider} />
+
+        {/* Nav */}
+        <nav className={styles.sidebarNav}>
+          <ul className={styles.sidebarList}>
+            <li>
+              <Link href="/dashboard">
+                <Button
+                  variant="ghost"
+                  className={`${styles.sidebarButton} ${pathname === "/dashboard" || pathname.startsWith("/dashboard/chat/") ? styles.active : ""}`}
+                >
+                  Playground
+                </Button>
+              </Link>
+            </li>
+            <li>
+              <Link href="/dashboard/gallery">
+                <Button
+                  variant="ghost"
+                  className={`${styles.sidebarButton} ${pathname === "/dashboard/gallery" ? styles.active : ""}`}
+                >
+                  Gallery
+                </Button>
+              </Link>
+            </li>
+            <li>
+              <Link href="/dashboard/settings">
+                <Button
+                  variant="ghost"
+                  className={`${styles.sidebarButton} ${pathname === "/dashboard/settings" ? styles.active : ""}`}
+                >
+                  Settings
+                </Button>
+              </Link>
+            </li>
+          </ul>
+        </nav>
       </div>
-
-      {/* Divider */}
-      <div className={styles.sidebarDivider} />
-
-      {/* Nav */}
-      <nav className={styles.sidebarNav}>
-        <ul className={styles.sidebarList}>
-          <li>
-            <Link href="/dashboard">
-              <Button variant="ghost" className={styles.sidebarButton}>
-                Playground
-              </Button>
-            </Link>
-          </li>
-          <li>
-            <Link href="/dashboard/gallery">
-              <Button variant="ghost" className={styles.sidebarButton}>
-                Gallery
-              </Button>
-            </Link>
-          </li>
-          <li>
-            <Link href="/dashboard/settings">
-              <Button variant="ghost" className={styles.sidebarButton}>
-                Settings
-              </Button>
-            </Link>
-          </li>
-        </ul>
-      </nav>
 
       {/* Footer */}
       <div className={styles.sidebarFooter}>

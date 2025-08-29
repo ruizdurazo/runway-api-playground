@@ -72,10 +72,27 @@ export async function POST(request: NextRequest) {
       url = task.output?.[0]
       effectiveGenerationType = "video"
     } else if (generationType === "image") {
+      let effectiveModel = model;
+      let refImages = assetUrls?.map((url: string, index: number) => ({
+        uri: url,
+        tag: `ref${index + 1}`,
+      })) || [];
+      if (model === "gen4_image" && refImages.length > 0) {
+        effectiveModel = "gen4_image_turbo";
+      }
+      const params = {
+        model: effectiveModel,
+        promptText: prompt.prompt_text,
+        ratio: "1280:720",
+      };
+      if (refImages.length > 0) {
+        // @ts-expect-error - Type mismatch
+        params.referenceImages = refImages;
+      }
       const task = await client.textToImage
         // @ts-expect-error - Model type mismatch
-        .create(parameters)
-        .waitForTaskOutput()
+        .create(params)
+        .waitForTaskOutput();
       url = task.output?.[0]
     } else {
       const imageParams = {

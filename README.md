@@ -1,40 +1,19 @@
 # Runway API Playground
 
-This is a playground for the Runway API. It will be a simple web app that allows users to create and edit prompts that will generate images and videos.
+This is a playground for the [Runway API](https://docs.dev.runwayml.com/).
 
-## Technical Requirements
-
-- [x] create a new next.js project with typescript
-- [x] setup .gitignore
-- [x] setup env variables for supabase
-- [x] setup login page
-- [x] setup dashboard layout (with sidebar)
-- [x] setup main page (chat page)
-- [x] setup user media gallery page
-- [x] setup user settings page
-
-## Requirements
-
-- [x] be able to sign up and create a new account with supabase
-- [x] be able to login
-- [x] be able to logout
-- [x] be able to change the user's name
-- [x] be able to set the user's runway api key
-- [x] be able to see a media gallery of all the images and videos uploaded by the user
-- [x] be able to create a new chat and prompt that will generate a video or image
-- [x] be able to edit and re-run a prompt with the same chat
-- [x] be able to delete a prompt from a chat and all the media generated from it
-- [x] be able to see a list/history of chats
+It's a simple web app that allows users to create and edit prompts that will generate images and videos with Runway's different AI models.
 
 ## Tools
 
-- Node.js
-- TypeScript
-- React
-- Next.js
-- Shadcn UI
-- Runway API
-- Supabase
+- [Runway API](https://runwayml.com/) ([Docs](https://docs.dev.runwayml.com/))
+- [Supabase](https://supabase.com/)
+- [Next.js](https://nextjs.org/)
+- [React](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Shadcn UI](https://ui.shadcn.com/)
+- [Sass](https://sass-lang.com/)
+- [Sonner](https://sonner.emilkowal.ski/)
 
 ## Supabase Database Setup
 
@@ -47,6 +26,7 @@ CREATE TABLE public.chats (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (id)
 );
 
@@ -67,6 +47,7 @@ CREATE TABLE public.prompts (
   chat_id uuid NOT NULL REFERENCES public.chats(id) ON DELETE CASCADE,
   prompt_text text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
   model text,
   generation_type text,
   PRIMARY KEY (id)
@@ -91,6 +72,50 @@ WITH CHECK (
     AND public.chats.user_id = auth.uid()
   )
 );
+```
+
+### Triggers for Timestamps
+
+After creating the tables, set up triggers to automatically update the `updated_at` timestamps:
+
+```sql
+-- Create shared trigger function for setting updated_at
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for updates on chats
+CREATE OR REPLACE TRIGGER update_chats_updated_at
+BEFORE UPDATE ON public.chats
+FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Trigger for updates on prompts
+CREATE OR REPLACE TRIGGER update_prompts_updated_at
+BEFORE UPDATE ON public.prompts
+FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Create function to update chat's updated_at on prompt changes
+CREATE OR REPLACE FUNCTION update_chat_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE public.chats SET updated_at = now() WHERE id = NEW.chat_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for inserts on prompts
+CREATE OR REPLACE TRIGGER update_chat_on_prompt_insert
+AFTER INSERT ON public.prompts
+FOR EACH ROW EXECUTE FUNCTION update_chat_updated_at();
+
+-- Trigger for updates on prompts
+CREATE OR REPLACE TRIGGER update_chat_on_prompt_update
+AFTER UPDATE ON public.prompts
+FOR EACH ROW EXECUTE FUNCTION update_chat_updated_at();
 ```
 
 ### Media Table

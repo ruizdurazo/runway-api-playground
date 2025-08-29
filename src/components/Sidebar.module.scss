@@ -3,6 +3,9 @@
   background-color: var(--background-sidebar);
   border-right: 1px solid var(--border);
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .sidebarHeader {
@@ -31,6 +34,10 @@
 .sidebarButton {
   width: 100%;
   justify-content: flex-start;
+}
+
+.sidebarButton.active {
+  background-color: var(--secondary-background);
 }
 
 .sidebarFooter {
