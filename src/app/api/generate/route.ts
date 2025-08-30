@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { promptId, model, generationType, assetUrls } = body
+  const { promptId, model, generationType, assets } = body
 
   if (!promptId || !model || !generationType) {
     return NextResponse.json(
@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
     model,
     promptText: prompt.prompt_text,
     referenceImages:
-      assetUrls?.map((url: string, index: number) => ({
-        uri: url,
-        tag: `ref${index + 1}`,
+      assets?.map((a: { url: string; tag: string }, index: number) => ({
+        uri: a.url,
+        tag: a.tag || `ref${index + 1}`,
       })) || [],
     ratio: "1280:720",
   }
@@ -58,12 +58,16 @@ export async function POST(request: NextRequest) {
     let effectiveGenerationType = generationType
     let url
     if (model === "upscale_v1") {
-      if (!assetUrls || assetUrls.length !== 1) {
+      if (!assets || assets.length !== 1) {
         throw new Error("Upscale requires exactly one video input")
       }
+    } else if (assets?.length > 3) {
+      throw new Error("Maximum of 3 reference images allowed")
+    }
+    if (model === "upscale_v1") {
       const videoParams = {
         model: "upscale_v1",
-        videoUri: assetUrls[0],
+        videoUri: assets[0].url,
       }
       const task = await client.videoUpscale
         // @ts-expect-error - Model type mismatch
@@ -73,9 +77,9 @@ export async function POST(request: NextRequest) {
       effectiveGenerationType = "video"
     } else if (generationType === "image") {
       let effectiveModel = model;
-      let refImages = assetUrls?.map((url: string, index: number) => ({
-        uri: url,
-        tag: `ref${index + 1}`,
+      let refImages = assets?.map((a: { url: string; tag: string }, index: number) => ({
+        uri: a.url,
+        tag: a.tag || `ref${index + 1}`,
       })) || [];
       if (model === "gen4_image" && refImages.length > 0) {
         effectiveModel = "gen4_image_turbo";
@@ -98,7 +102,10 @@ export async function POST(request: NextRequest) {
       const imageParams = {
         model: "gen4_image_turbo",
         promptText: parameters.promptText,
-        referenceImages: parameters.referenceImages,
+        referenceImages: assets?.map((a: { url: string; tag: string }, index: number) => ({
+          uri: a.url,
+          tag: a.tag || `ref${index + 1}`,
+        })) || [],
         ratio: parameters.ratio,
       }
       const imageTask = await client.textToImage

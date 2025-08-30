@@ -25,8 +25,25 @@ export interface Prompt {
     url: string
     type: "image" | "video"
     category: "input" | "output"
+    tag: string | null
   }[]
 }
+
+// Valid model outputs (generation_type)
+// gen4_aleph: video
+// gen4_turbo: video
+// gen4_image: image
+// gen4_image_turbo: image
+// act_two: video
+// upscale_v1: video
+
+// Valid model inputs (media.type)
+// gen4_aleph: video + image/text
+// gen4_turbo: image + text
+// gen4_image: image/text
+// gen4_image_turbo: image + text
+// act_two: video + image/video (special case with `character` field needed, no `promptText`)
+// upscale_v1: video
 
 export default function ChatClient() {
   const { id } = useParams()
@@ -36,7 +53,7 @@ export default function ChatClient() {
     const fetchPrompts = async () => {
       const { data, error } = await supabase
         .from("prompts")
-        .select("*, media(id, path, type, category)")
+        .select("*, media(id, path, type, category, tag)")
         .eq("chat_id", id)
         .order("created_at", { ascending: true })
       if (error) {
@@ -49,9 +66,11 @@ export default function ChatClient() {
             media: await Promise.all(
               (prompt.media || []).map(
                 async (m: {
+                  id: string
                   path: string
                   type: "image" | "video"
                   category: "input" | "output"
+                  tag: string | null
                 }) => ({
                   ...m,
                   url:
@@ -74,16 +93,18 @@ export default function ChatClient() {
   const fetchSinglePrompt = async (promptId: string): Promise<Prompt> => {
     const { data, error } = await supabase
       .from("prompts")
-      .select("*, media(id, path, type, category)")
+      .select("*, media(id, path, type, category, tag)")
       .eq("id", promptId)
       .single()
     if (error) throw error
     const processedMedia = await Promise.all(
       (data.media || []).map(
         async (m: {
+          id: string
           path: string
           type: "image" | "video"
           category: "input" | "output"
+          tag: string | null
         }) => ({
           ...m,
           url:
@@ -99,14 +120,17 @@ export default function ChatClient() {
     text,
     model,
     generationType,
-    files,
+    filesWithTags,
   }: {
     text: string
     model: Prompt["model"]
     generationType: Prompt["generation_type"]
-    files: File[]
+    filesWithTags: { file: File; tag: string }[]
   }) => {
     if (!text && model !== "upscale_v1") throw new Error("Prompt is required")
+    if (model !== "upscale_v1" && filesWithTags.length > 3) {
+      throw new Error("Maximum of 3 reference images allowed")
+    }
 
     const {
       data: { user },
@@ -117,7 +141,10 @@ export default function ChatClient() {
     if (!apiKey) throw new Error("Runway API key not set in settings")
 
     if (model === "upscale_v1") {
-      if (files.length !== 1 || !files[0].type.startsWith("video/")) {
+      if (
+        filesWithTags.length !== 1 ||
+        !filesWithTags[0].file.type.startsWith("video/")
+      ) {
         throw new Error("Upscale requires exactly one video file.")
       }
       if (generationType !== "video") {
@@ -138,38 +165,38 @@ export default function ChatClient() {
 
     const promptId = promptData[0].id
 
-    const assetUrls: string[] = []
-    for (const file of files) {
-      const filename = `${user.id}/inputs/${promptId}-${file.name}`
-      const { error: uploadError } = await supabase.storage
-        .from("media")
-        .upload(filename, file)
-      if (uploadError) throw uploadError
+    const assets = await Promise.all(
+      filesWithTags.map(async (item, index) => {
+        const filename = `${user.id}/inputs/${promptId}-${item.file.name}`
+        const { error: uploadError } = await supabase.storage
+          .from("media")
+          .upload(filename, item.file)
+        if (uploadError) throw uploadError
 
-      const { data: signedData, error: signError } = await supabase.storage
-        .from("media")
-        .createSignedUrl(filename, 3600)
-      if (signError) throw signError
-      assetUrls.push(signedData.signedUrl)
-    }
+        const type = item.file.type.startsWith("image/") ? "image" : "video"
+        const { error: insertError } = await supabase.from("media").insert({
+          prompt_id: promptId,
+          user_id: user.id,
+          path: filename,
+          type,
+          category: "input",
+          tag: item.tag || null,
+        })
+        if (insertError) throw insertError
 
-    for (const file of files) {
-      const filename = `${user.id}/inputs/${promptId}-${file.name}`
-      const type = file.type.startsWith("image/") ? "image" : "video"
-      const { error: insertError } = await supabase.from("media").insert({
-        prompt_id: promptId,
-        user_id: user.id,
-        path: filename,
-        type,
-        category: "input",
-      })
-      if (insertError) throw insertError
-    }
+        const { data: signedData, error: signError } = await supabase.storage
+          .from("media")
+          .createSignedUrl(filename, 3600)
+        if (signError) throw signError
+
+        return { url: signedData.signedUrl, tag: item.tag || `ref${index + 1}` }
+      }),
+    )
 
     const response = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ promptId, model, generationType, assetUrls }),
+      body: JSON.stringify({ promptId, model, generationType, assets }),
     })
 
     if (!response.ok) {
@@ -188,7 +215,7 @@ export default function ChatClient() {
       model,
       generationType,
       existingMedia,
-      newFiles,
+      newFilesWithTags,
     }: {
       text: string
       model: Prompt["model"]
@@ -198,14 +225,21 @@ export default function ChatClient() {
         path: string
         url: string
         type: "image" | "video"
+        tag: string
       }[]
-      newFiles: File[]
+      newFilesWithTags: { file: File; tag: string }[]
     },
   ) => {
-    await supabase
+    const totalInputs = existingMedia.length + newFilesWithTags.length
+    if (model !== "upscale_v1" && totalInputs > 3) {
+      throw new Error("Maximum of 3 reference images allowed")
+    }
+
+    const { error: updateError } = await supabase
       .from("prompts")
       .update({ prompt_text: text, model, generation_type: generationType })
       .eq("id", promptId)
+    if (updateError) throw updateError
 
     const { data: currentInputs } = await supabase
       .from("media")
@@ -214,51 +248,63 @@ export default function ChatClient() {
       .eq("category", "input")
 
     const keptIds = existingMedia.map((m) => m.id)
-    const toDelete =
-      currentInputs?.filter((ci) => !keptIds.includes(ci.id)) || []
+    const toDelete = currentInputs?.filter((ci) => !keptIds.includes(ci.id)) || []
 
     for (const del of toDelete) {
       await supabase.storage.from("media").remove([del.path])
       await supabase.from("media").delete().eq("id", del.id)
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    const newAssetUrls: string[] = []
-    for (const file of newFiles) {
-      const filename = `${user?.id}/inputs/${promptId}-${file.name}`
-      const { error } = await supabase.storage
+    // Update tags for existing media
+    for (const m of existingMedia) {
+      await supabase
         .from("media")
-        .upload(filename, file)
-      if (error) throw error
-      const type = file.type.startsWith("image/") ? "image" : "video"
-      const { error: insertErr } = await supabase.from("media").insert({
-        prompt_id: promptId,
-        user_id: user?.id,
-        path: filename,
-        type,
-        category: "input",
-      })
-      if (insertErr) throw insertErr
-      const { data: signed } = await supabase.storage
-        .from("media")
-        .createSignedUrl(filename, 3600)
-      if (signed?.signedUrl) newAssetUrls.push(signed.signedUrl)
+        .update({ tag: m.tag || null })
+        .eq("id", m.id)
     }
 
-    const keptAssetUrls = await Promise.all(
-      existingMedia.map(async (m) => {
-        const { data } = await supabase.storage
+    // Upload and insert new files
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error("User not found")
+
+    await Promise.all(
+      newFilesWithTags.map(async ({ file, tag }) => {
+        const filename = `${user.id}/inputs/${promptId}-${Date.now()}-${file.name}`
+        const { error: uploadError } = await supabase.storage
           .from("media")
-          .createSignedUrl(m.path, 3600)
-        return data?.signedUrl || ""
-      }),
+          .upload(filename, file)
+        if (uploadError) throw uploadError
+
+        const type = file.type.startsWith("image/") ? "image" : "video"
+        const { error: insertError } = await supabase.from("media").insert({
+          prompt_id: promptId,
+          user_id: user.id,
+          path: filename,
+          type,
+          category: "input",
+          tag: tag || null,
+        })
+        if (insertError) throw insertError
+      })
     )
 
-    const allAssetUrls = [...keptAssetUrls.filter(Boolean), ...newAssetUrls]
+    const updatedPrompt = await fetchSinglePrompt(promptId)
+    setPrompts((prev) =>
+      prev.map((p) => (p.id === promptId ? updatedPrompt : p)),
+    )
+  }
 
+  const onRegenerate = async (promptId: string) => {
+    const prompt = prompts.find((p) => p.id === promptId)
+    if (!prompt) throw new Error("Prompt not found")
+
+    const inputMedia = prompt.media?.filter((m) => m.category === "input") || []
+    const assets = inputMedia.map((m, index) => ({
+      url: m.url,
+      tag: m.tag || `ref${index + 1}`,
+    }))
+
+    // Delete old outputs
     const { data: oldOutputs } = await supabase
       .from("media")
       .select("path")
@@ -278,9 +324,9 @@ export default function ChatClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         promptId,
-        model,
-        generationType,
-        assetUrls: allAssetUrls,
+        model: prompt.model,
+        generationType: prompt.generation_type,
+        assets,
       }),
     })
     if (!response.ok) {
@@ -316,6 +362,7 @@ export default function ChatClient() {
             prompt={prompt}
             onEdit={onEdit}
             onDelete={onDelete}
+            onRegenerate={onRegenerate}
           />
         ))}
       </div>

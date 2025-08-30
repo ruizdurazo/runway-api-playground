@@ -128,6 +128,7 @@ CREATE TABLE public.media (
   path text NOT NULL,
   type text NOT NULL,
   category text NOT NULL DEFAULT 'output',
+  tag text,
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (id)
 );

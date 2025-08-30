@@ -45,7 +45,7 @@ export default function SettingsClient() {
       <h1 className={styles.title}>User Settings</h1>
       <form className={styles.settingsForm} onSubmit={handleSubmit}>
         <div>
-          <Label htmlFor="name">Name</Label>
+          <Label htmlFor="name">User Name</Label>
           <Input
             id="name"
             value={name}
@@ -56,6 +56,7 @@ export default function SettingsClient() {
           <Label htmlFor="api-key">Runway API Key</Label>
           <Input
             id="api-key"
+            type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
           />

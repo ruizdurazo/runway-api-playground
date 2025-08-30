@@ -12,6 +12,7 @@ import {
 import { useState, useEffect } from "react"
 import styles from "./Sidebar.module.scss"
 import { usePathname } from "next/navigation"
+import { RunwayLogo } from "@/assets/RunwayLogo"
 
 export default function Sidebar() {
   const [theme, setTheme] = useState<string | undefined>(undefined)
@@ -62,7 +63,7 @@ export default function Sidebar() {
       {/* Header */}
       <div>
         <div className={styles.sidebarHeader}>
-          <h2 className={styles.sidebarTitle}>Runway API Playground</h2>
+          <RunwayLogo className={styles.sidebarLogo} />
         </div>
 
         {/* Divider */}

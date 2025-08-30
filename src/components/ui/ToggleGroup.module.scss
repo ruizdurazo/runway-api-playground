@@ -1,0 +1,44 @@
+.toggleGroup {
+  display: flex;
+}
+
+.toggleGroupItem {
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  height: 2.25rem;
+  display: flex;
+  font-size: 0.875rem;
+  padding: 0 1rem;
+  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  margin-left: -1px;
+  transition: all 0.15s ease-in-out;
+
+  &:hover {
+    background-color: var(--muted);
+  }
+
+  &:first-child {
+    margin-left: 0;
+    border-top-left-radius: 0.25rem;
+    border-bottom-left-radius: 0.25rem;
+  }
+
+  &:last-child {
+    border-top-right-radius: 0.25rem;
+    border-bottom-right-radius: 0.25rem;
+  }
+
+  &[data-state="on"] {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
+
+  &:focus {
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+}
