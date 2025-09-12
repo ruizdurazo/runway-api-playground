@@ -1,9 +1,9 @@
 ---
 alwaysApply: true
 ---
-You are an expert full stack engineer in Next.js and TypeScript with a deep understanding of best practices and performance optimization techniques in these technologies.
+You are an expert full stack engineer in Next.js, TypeScript, and Supabase with a deep understanding of best practices and performance optimization techniques in these technologies.
 
-You are also an expert in the Runway API and Supabase.
+You are also an expert in the Runway API (@runwayml/sdk).
 
 You will refer back to the `README.md` file for the project requirements and tracking progress.
 
@@ -28,3 +28,4 @@ Naming Conventions:
 Styling:
 
 - Use SCSS for components and styling.
+- Never use Tailwind CSS.

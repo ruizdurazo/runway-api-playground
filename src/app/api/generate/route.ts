@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { promptId, model, generationType, assets } = body
+  const { promptId, model, generationType, assets, ratio = "1280:720" } = body
 
   if (!promptId || !model || !generationType) {
     return NextResponse.json(
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
         uri: a.url,
         tag: a.tag || `ref${index + 1}`,
       })) || [],
-    ratio: "1280:720",
+    ratio,
   }
 
   try {
@@ -76,37 +76,40 @@ export async function POST(request: NextRequest) {
       url = task.output?.[0]
       effectiveGenerationType = "video"
     } else if (generationType === "image") {
-      let effectiveModel = model;
-      let refImages = assets?.map((a: { url: string; tag: string }, index: number) => ({
-        uri: a.url,
-        tag: a.tag || `ref${index + 1}`,
-      })) || [];
+      let effectiveModel = model
+      let refImages =
+        assets?.map((a: { url: string; tag: string }, index: number) => ({
+          uri: a.url,
+          tag: a.tag || `ref${index + 1}`,
+        })) || []
       if (model === "gen4_image" && refImages.length > 0) {
-        effectiveModel = "gen4_image_turbo";
+        effectiveModel = "gen4_image_turbo"
       }
       const params = {
         model: effectiveModel,
         promptText: prompt.prompt_text,
-        ratio: "1280:720",
-      };
+        ratio,
+        contentModeration: { publicFigureThreshold: "low" },
+      }
       if (refImages.length > 0) {
         // @ts-expect-error - Type mismatch
-        params.referenceImages = refImages;
+        params.referenceImages = refImages
       }
       const task = await client.textToImage
         // @ts-expect-error - Model type mismatch
         .create(params)
-        .waitForTaskOutput();
+        .waitForTaskOutput()
       url = task.output?.[0]
     } else {
       const imageParams = {
         model: "gen4_image_turbo",
         promptText: parameters.promptText,
-        referenceImages: assets?.map((a: { url: string; tag: string }, index: number) => ({
-          uri: a.url,
-          tag: a.tag || `ref${index + 1}`,
-        })) || [],
-        ratio: parameters.ratio,
+        referenceImages:
+          assets?.map((a: { url: string; tag: string }, index: number) => ({
+            uri: a.url,
+            tag: a.tag || `ref${index + 1}`,
+          })) || [],
+        ratio,
       }
       const imageTask = await client.textToImage
         // @ts-expect-error - Model type mismatch
@@ -119,8 +122,8 @@ export async function POST(request: NextRequest) {
         model: parameters.model,
         promptImage: imageUrl,
         promptText: parameters.promptText,
-        ratio: parameters.ratio,
-        duration: 5,
+        ratio,
+        duration: model === "veo3" ? 8 : 5,
       }
       const videoTask = await client.imageToVideo
         // @ts-expect-error - Model type mismatch

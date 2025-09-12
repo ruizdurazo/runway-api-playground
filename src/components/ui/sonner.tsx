@@ -13,7 +13,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
-      className={styles.toaster}
+      // className={styles.toaster}
       toastOptions={{
         classNames: {
           toast: styles.toast,

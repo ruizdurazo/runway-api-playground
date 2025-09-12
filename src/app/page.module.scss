@@ -7,10 +7,45 @@
   padding: 1rem;
 }
 
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.video {
+  position: absolute;
+  height: 100%;
+  object-fit: cover;
+}
+
+.logo {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+
+  & svg,
+  & path {
+    color: white !important;
+  }
+}
+
+.heroContent {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 .title {
-  font-size: 2.25rem;
-  font-weight: 700;
-  margin-bottom: 2rem;
+  font-size: 4rem;
+  font-weight: 500;
+  margin-bottom: 4rem;
+  line-height: 1.1em;
+  text-align: center;
+  color: white;
 }
 
 .loginButton {

@@ -15,6 +15,14 @@ It's a simple web app that allows users to create and edit prompts that will gen
 - [Sass](https://sass-lang.com/)
 - [Sonner](https://sonner.emilkowal.ski/)
 
+## Local Development
+
+1. Clone the repository
+2. Run `npm install`
+3. Run `npm run dev`
+4. Open `http://localhost:3000` in your browser
+5. You can now start creating and editing prompts
+
 ## Supabase Database Setup
 
 To set up the necessary database tables in your Supabase project, run the following SQL queries in the SQL Editor.
@@ -50,6 +58,7 @@ CREATE TABLE public.prompts (
   updated_at timestamptz NOT NULL DEFAULT now(),
   model text,
   generation_type text,
+  ratio text,
   PRIMARY KEY (id)
 );
 
@@ -165,3 +174,17 @@ WITH CHECK (
 ```
 
 This policy assumes files are stored in user-specific folders like `{user_id}/filename.ext`.
+
+### Realtime Subscriptions
+
+```sql
+-- Enable realtime for tables
+ALTER PUBLICATION supabase_realtime ADD TABLE public.chats;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.prompts;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.media;
+
+-- Enable full replica identity for DELETE events (to receive old records)
+ALTER TABLE public.prompts REPLICA IDENTITY FULL;
+ALTER TABLE public.media REPLICA IDENTITY FULL;
+ALTER TABLE public.chats REPLICA IDENTITY FULL;
+```

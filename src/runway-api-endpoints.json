@@ -1,0 +1,448 @@
+{
+  "endpoints": [
+    {
+      "name": "Generate a video from an image",
+      "method": "POST",
+      "path": "/v1/image_to_video",
+      "description": "This endpoint will start a new task to generate a video from an image prompt.",
+      "headers": {
+        "X-Runway-Version": {
+          "required": true,
+          "value": "2024-11-06"
+        }
+      },
+      "inputs": {
+        "promptImage": {
+          "type": "string or array of objects",
+          "required": true,
+          "description": "One or more images to use as prompt. For array: each object has uri (string, required) and position (string, 'first' or 'last', required)."
+        },
+        "model": {
+          "type": "string",
+          "required": true,
+          "validValues": ["gen4_turbo", "gen3a_turbo"],
+          "description": "The model variant to use."
+        },
+        "ratio": {
+          "type": "string",
+          "required": true,
+          "validValues": [
+            "1280:720",
+            "720:1280",
+            "1104:832",
+            "832:1104",
+            "960:960",
+            "1584:672",
+            "1280:768",
+            "768:1280"
+          ],
+          "description": "The resolution of the output video. Specific values depend on the model."
+        },
+        "seed": {
+          "type": "integer",
+          "constraints": "[0 .. 4294967295]",
+          "description": "Optional seed for reproducibility."
+        },
+        "promptText": {
+          "type": "string",
+          "constraints": "<= 1000 characters",
+          "description": "Optional text prompt."
+        },
+        "duration": {
+          "type": "integer",
+          "default": 10,
+          "validValues": [5, 10],
+          "description": "Duration in seconds."
+        },
+        "contentModeration": {
+          "type": "object",
+          "subfields": {
+            "publicFigureThreshold": {
+              "type": "string",
+              "default": "auto",
+              "validValues": ["auto", "low"]
+            }
+          }
+        }
+      },
+      "outputs": {
+        "id": "string"
+      }
+    },
+    {
+      "name": "Generate a video from a video",
+      "method": "POST",
+      "path": "/v1/video_to_video",
+      "description": "This endpoint will start a new task to generate a video from a video.",
+      "headers": {
+        "X-Runway-Version": {
+          "required": true,
+          "value": "2024-11-06"
+        }
+      },
+      "inputs": {
+        "videoUri": {
+          "type": "string",
+          "required": true,
+          "description": "HTTPS URL or data URI of the input video."
+        },
+        "promptText": {
+          "type": "string",
+          "required": true,
+          "constraints": "<= 1000 characters",
+          "description": "Text prompt."
+        },
+        "model": {
+          "type": "string",
+          "required": true,
+          "validValues": ["gen4_aleph"]
+        },
+        "ratio": {
+          "type": "string",
+          "required": true,
+          "validValues": [
+            "1280:720",
+            "720:1280",
+            "1104:832",
+            "960:960",
+            "832:1104",
+            "1584:672",
+            "848:480",
+            "640:480"
+          ]
+        },
+        "seed": {
+          "type": "integer",
+          "constraints": "[0 .. 4294967295]"
+        },
+        "references": {
+          "type": "array of objects",
+          "subfields": {
+            "type": {
+              "type": "string",
+              "validValues": ["image"]
+            },
+            "uri": {
+              "type": "string",
+              "required": true
+            }
+          }
+        },
+        "contentModeration": {
+          "type": "object",
+          "subfields": {
+            "publicFigureThreshold": {
+              "type": "string",
+              "default": "auto",
+              "validValues": ["auto", "low"]
+            }
+          }
+        }
+      },
+      "outputs": {
+        "id": "string"
+      }
+    },
+    {
+      "name": "Generate an image from text",
+      "method": "POST",
+      "path": "/v1/text_to_image",
+      "description": "This endpoint will start a new task to generate images from text.",
+      "headers": {
+        "X-Runway-Version": {
+          "required": true,
+          "value": "2024-11-06"
+        }
+      },
+      "inputs": {
+        "promptText": {
+          "type": "string",
+          "required": true,
+          "constraints": "<= 1000 characters"
+        },
+        "ratio": {
+          "type": "string",
+          "required": true,
+          "validValues": [
+            "1920:1080",
+            "1080:1920",
+            "1024:1024",
+            "1360:768",
+            "1080:1080",
+            "1168:880",
+            "1440:1080",
+            "1080:1440",
+            "1808:768",
+            "2112:912",
+            "1280:720",
+            "720:1280",
+            "720:720",
+            "960:720",
+            "720:960",
+            "1680:720"
+          ]
+        },
+        "model": {
+          "type": "string",
+          "required": true,
+          "validValues": ["gen4_image", "gen4_image_turbo"]
+        },
+        "seed": {
+          "type": "integer",
+          "constraints": "[0 .. 4294967295]"
+        },
+        "referenceImages": {
+          "type": "array of objects",
+          "description": "Up to 3 reference images; required for gen4_image_turbo.",
+          "subfields": {
+            "uri": {
+              "type": "string",
+              "required": true
+            },
+            "tag": {
+              "type": "string",
+              "constraints": "3-16 chars, alphanumeric + _, starts with letter"
+            }
+          }
+        },
+        "contentModeration": {
+          "type": "object",
+          "subfields": {
+            "publicFigureThreshold": {
+              "type": "string",
+              "default": "auto",
+              "validValues": ["auto", "low"]
+            }
+          }
+        }
+      },
+      "outputs": {
+        "id": "string"
+      }
+    },
+    {
+      "name": "Upscale a video",
+      "method": "POST",
+      "path": "/v1/video_upscale",
+      "description": "This endpoint will start a new task to upscale a video. Videos will be upscaled by a factor of 4X, capped at a maximum of 4096px along each side.",
+      "headers": {
+        "X-Runway-Version": {
+          "required": true,
+          "value": "2024-11-06"
+        }
+      },
+      "inputs": {
+        "videoUri": {
+          "type": "string",
+          "required": true,
+          "description": "HTTPS URL or data URI of the video."
+        },
+        "model": {
+          "type": "string",
+          "required": true,
+          "validValues": ["upscale_v1"]
+        }
+      },
+      "outputs": {
+        "id": "string"
+      }
+    },
+    {
+      "name": "Control a character",
+      "method": "POST",
+      "path": "/v1/character_performance",
+      "description": "This endpoint will start a new task to control a character's facial expressions and body movements using a reference video.",
+      "headers": {
+        "X-Runway-Version": {
+          "required": true,
+          "value": "2024-11-06"
+        }
+      },
+      "inputs": {
+        "character": {
+          "type": "object",
+          "required": true,
+          "description": "Character video or image.",
+          "subfields": {
+            "type": {
+              "type": "string",
+              "required": true,
+              "validValues": ["video", "image"]
+            },
+            "uri": {
+              "type": "string",
+              "required": true
+            }
+          }
+        },
+        "reference": {
+          "type": "object",
+          "required": true,
+          "subfields": {
+            "type": {
+              "type": "string",
+              "required": true,
+              "validValues": ["video"]
+            },
+            "uri": {
+              "type": "string",
+              "required": true
+            }
+          }
+        },
+        "model": {
+          "type": "string",
+          "required": true,
+          "validValues": ["act_two"]
+        },
+        "ratio": {
+          "type": "string",
+          "required": true,
+          "validValues": [
+            "1280:720",
+            "720:1280",
+            "960:960",
+            "1104:832",
+            "832:1104",
+            "1584:672"
+          ]
+        },
+        "bodyControl": {
+          "type": "boolean",
+          "default": true
+        },
+        "expressionIntensity": {
+          "type": "integer",
+          "default": 3,
+          "constraints": "[1 .. 5]"
+        },
+        "seed": {
+          "type": "integer",
+          "constraints": "[0 .. 4294967295]"
+        },
+        "contentModeration": {
+          "type": "object",
+          "subfields": {
+            "publicFigureThreshold": {
+              "type": "string",
+              "default": "auto",
+              "validValues": ["auto", "low"]
+            }
+          }
+        }
+      },
+      "outputs": {
+        "id": "string"
+      }
+    },
+    {
+      "name": "Get task detail",
+      "method": "GET",
+      "path": "/v1/tasks/{id}",
+      "description": "Return details about a task.",
+      "headers": {
+        "X-Runway-Version": {
+          "required": true,
+          "value": "2024-11-06"
+        }
+      },
+      "inputs": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Task ID (path parameter)."
+        }
+      },
+      "outputs": {
+        "id": "string",
+        "status": {
+          "type": "string",
+          "validValues": [
+            "RUNNING",
+            "SUCCEEDED",
+            "FAILED",
+            "PENDING",
+            "CANCELLED",
+            "THROTTLED"
+          ]
+        },
+        "createdAt": "string <date-time>",
+        "failure": "string",
+        "failureCode": "string",
+        "output": "array of strings <uri>",
+        "progress": "number"
+      }
+    },
+    {
+      "name": "Cancel or delete a task",
+      "method": "DELETE",
+      "path": "/v1/tasks/{id}",
+      "description": "Cancels or deletes a task.",
+      "headers": {
+        "X-Runway-Version": {
+          "required": true,
+          "value": "2024-11-06"
+        }
+      },
+      "inputs": {
+        "id": {
+          "type": "string",
+          "required": true,
+          "description": "Task ID (path parameter)."
+        }
+      },
+      "outputs": {
+        "description": "204 No Content on success."
+      }
+    },
+    {
+      "name": "Get organization information",
+      "method": "GET",
+      "path": "/v1/organization",
+      "description": "Get usage tier and credit balance information about the organization.",
+      "headers": {
+        "X-Runway-Version": {
+          "required": true,
+          "value": "2024-11-06"
+        }
+      },
+      "inputs": {},
+      "outputs": {
+        "creditBalance": "integer",
+        "tier": {
+          "maxMonthlyCreditSpend": "integer",
+          "models": "object with model limits"
+        },
+        "usage": {
+          "models": "object with model usage"
+        }
+      }
+    },
+    {
+      "name": "Query credit usage",
+      "method": "POST",
+      "path": "/v1/organization/usage",
+      "description": "Fetch credit usage data broken down by model and day.",
+      "headers": {
+        "X-Runway-Version": {
+          "required": true,
+          "value": "2024-11-06"
+        }
+      },
+      "inputs": {
+        "startDate": {
+          "type": "string <date>",
+          "description": "Start date (YYYY-MM-DD)."
+        },
+        "beforeDate": {
+          "type": "string <date>",
+          "description": "End date (YYYY-MM-DD), not inclusive."
+        }
+      },
+      "outputs": {
+        "results": "array of objects with date and usedCredits",
+        "models": "array of strings"
+      }
+    }
+  ]
+}

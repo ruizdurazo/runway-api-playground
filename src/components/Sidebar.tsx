@@ -108,6 +108,30 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className={styles.sidebarFooter}>
+        <ul className={styles.sidebarList}>
+          <li>
+            <Link href="https://dev.runwayml.com/" target="_blank">
+              <Button variant="ghost" className={`${styles.sidebarButton}`}>
+                Runway API ↗
+              </Button>
+            </Link>
+          </li>
+          <li>
+            <Link href="https://docs.dev.runwayml.com/" target="_blank">
+              <Button variant="ghost" className={`${styles.sidebarButton}`}>
+                API Docs ↗
+              </Button>
+            </Link>
+          </li>
+          <li>
+            <Link href="https://docs.dev.runwayml.com/api" target="_blank">
+              <Button variant="ghost" className={`${styles.sidebarButton}`}>
+                API Reference ↗
+              </Button>
+            </Link>
+          </li>
+        </ul>
+        {/* Theme Select */}
         <Select value={theme || "system"} onValueChange={setThemeFunc}>
           <SelectTrigger className={styles.sidebarSelectTrigger}>
             <SelectValue placeholder="Theme" />

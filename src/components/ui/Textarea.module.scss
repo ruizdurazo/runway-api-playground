@@ -15,7 +15,7 @@
 
   &:focus-visible {
     outline: none;
-    ring: 1px solid var(--ring);
+    border: 1px solid var(--ring);
   }
 
   &:disabled {
