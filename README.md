@@ -18,10 +18,21 @@ It's a simple web app that allows users to create and edit prompts that will gen
 ## Local Development
 
 1. Clone the repository
-2. Run `npm install`
-3. Run `npm run dev`
-4. Open `http://localhost:3000` in your browser
-5. You can now start creating and editing prompts
+2. Set up the Supabase project and database tables as described in the Supabase Setup sections below
+3. Run `npm install` or `pnpm install`
+4. Run `npm run dev` or `pnpm dev`
+5. Open `http://localhost:3000` in your browser
+6. Add your Runway API key in the settings page
+7. You can now start creating and editing prompts
+
+## Supabase Setup
+
+After creating a new Supabase project, you need to add the following environment variables to your `.env.local` file:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
 
 ## Supabase Database Setup
 
@@ -138,6 +149,7 @@ CREATE TABLE public.media (
   type text NOT NULL,
   category text NOT NULL DEFAULT 'output',
   tag text,
+  position text,
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (id)
 );

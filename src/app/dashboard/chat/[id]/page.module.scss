@@ -12,6 +12,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 2rem;
   width: 100%;
   margin: 2rem 0;
@@ -21,4 +22,23 @@
   position: sticky;
   bottom: 3rem;
   margin-top: 3rem;
+}
+
+.promptActions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+
+  & > :first-child {
+    flex: none;
+  }
+
+  & > * {
+    max-width: 160px;
+  }
+
+  & > :nth-child(2) {
+    max-width: 200px;
+  }
 }

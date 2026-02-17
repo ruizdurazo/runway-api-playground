@@ -43,51 +43,6 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Remove `gen3a_turbo`, `gemini_2.5_flash`, and `veo3` from organization details
-    if (details) {
-      Object.keys(details.tier.models).forEach((model: string) => {
-        if (model === "gen3a_turbo") {
-          delete details.tier.models[model]
-        }
-        if (model === "gemini_2.5_flash") {
-          // @ts-expect-error - Type mismatch
-          delete details.tier.models[model]
-        }
-        if (model === "veo3") {
-          // @ts-expect-error - Type mismatch
-          delete details.tier.models[model]
-        }
-      })
-      Object.keys(details.usage.models).forEach((model: string) => {
-        if (model === "gen3a_turbo") {
-          delete details.usage.models[model]
-        }
-        if (model === "gemini_2.5_flash") {
-          // @ts-expect-error - Type mismatch
-          delete details.usage.models[model]
-        }
-        if (model === "veo3") {
-          // @ts-expect-error - Type mismatch
-          delete details.usage.models[model]
-        }
-      })
-    }
-
-    // Remove `gen3a_turbo`, `gemini_2.5_flash`, and `veo3` from usage
-    if (usage) {
-      usage.results.forEach(
-        (result: { usedCredits: { model: string; amount: number }[] }) => {
-          result.usedCredits = result.usedCredits.filter(
-            (item: { model: string }) =>
-              item.model !== "gen3a_turbo" && item.model !== "gemini_2.5_flash" && item.model !== "veo3",
-          )
-        },
-      )
-      usage.models = usage.models.filter(
-        (model: string) => model !== "gen3a_turbo" && model !== "gemini_2.5_flash" && model !== "veo3",
-      )
-    }
-
     // Return organization and usage
     return new Response(JSON.stringify({ organization: details, usage }), {
       status: 200,

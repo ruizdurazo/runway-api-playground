@@ -1,0 +1,405 @@
+// ---------------------------------------------------------------------------
+// Card shell
+// ---------------------------------------------------------------------------
+
+.promptCard {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 540px;
+  width: 100%;
+  box-sizing: content-box;
+  border: 1px solid var(--border);
+
+  &.inputMode {
+    height: auto;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  &.mediaSized {
+    width: calc(540px * var(--media-aspect-ratio, 1.78));
+    max-width: 100%;
+  }
+}
+
+.promptContent {
+  height: 100%;
+}
+
+// ---------------------------------------------------------------------------
+// Loading shimmer
+// ---------------------------------------------------------------------------
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+.loadingText {
+  text-align: center;
+  display: inline-block;
+  background-clip: text;
+  background-image: linear-gradient(to right, #ccc, #ccc, #666, #ccc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% 100%;
+  background-repeat: repeat;
+  animation: shimmer 2s linear both infinite;
+}
+
+// ---------------------------------------------------------------------------
+// View mode
+// ---------------------------------------------------------------------------
+
+.viewContainer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  & .editButton {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    opacity: 0;
+    border-radius: 40px;
+    font-size: 16px;
+    padding: 6px 16px;
+    background-color: #00000080;
+    color: white;
+    height: auto;
+  }
+
+  & .inputSection {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    opacity: 0;
+
+    & .promptText {
+      color: white;
+      font-weight: 500;
+    }
+
+    & .inputMediaList {
+      display: flex;
+      flex-direction: row;
+      gap: 1rem;
+
+      & .inputMediaItem {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border-radius: 0.5rem;
+        border: 1px solid #808080;
+
+        & .inputImage,
+        & .inputVideo {
+          width: 100px;
+          height: 100px;
+          object-fit: cover;
+        }
+      }
+    }
+  }
+
+  &:hover {
+    .editButton {
+      opacity: 1;
+    }
+
+    & .inputSection {
+      opacity: 1;
+    }
+
+    & .outputSection {
+      &::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 50%;
+        background: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0),
+          rgba(0, 0, 0, 0.5)
+        );
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Output section
+// ---------------------------------------------------------------------------
+
+.outputSection {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  // height: 100%;
+  background-color: black;
+  flex: 1;
+
+  & > div {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    // height: 100%;
+  }
+
+  & .outputImage,
+  & .outputVideo {
+    max-width: 100%;
+    object-fit: cover;
+    height: 100%;
+  }
+
+  &.editMode {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    border-radius: 0.5rem;
+    overflow: hidden;
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.3);
+    }
+
+    & .outputImage,
+    & .outputVideo {
+      filter: blur(1px);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Prompt form container (input + edit mode)
+// ---------------------------------------------------------------------------
+
+.promptContainer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  height: 100%;
+
+  &.inputMode {
+    width: 800px;
+  }
+
+  & textarea {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    font-size: 16px;
+    font-weight: 500;
+
+    &::placeholder {
+      color: var(--muted-foreground);
+      font-weight: 400;
+    }
+
+    &:focus,
+    &:focus-visible {
+      outline: none;
+      border: none;
+      box-shadow: none;
+    }
+  }
+
+  & .cancelButton {
+    position: absolute;
+    height: auto;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    border: none;
+    cursor: pointer;
+    border-radius: 40px;
+    font-size: 16px;
+    padding: 6px 16px;
+    background-color: #00000080;
+    color: white;
+  }
+
+  & .inputForm {
+    width: 100%;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background-color: var(--background);
+  }
+
+  & .editForm {
+    width: 100%;
+    height: 100%;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background-color: var(--background);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Text input
+// ---------------------------------------------------------------------------
+
+.textInput {
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 500;
+
+  &::placeholder {
+    color: var(--muted-foreground);
+    font-weight: 400;
+  }
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+    border: none;
+    box-shadow: none;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Controls bar
+// ---------------------------------------------------------------------------
+
+.promptControls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+
+  & .promptSettings {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+
+    & .selectInput {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.5rem;
+      width: auto;
+      border: none;
+      background-color: transparent;
+      border-radius: 40px;
+      box-shadow: none;
+
+      &:hover {
+        background-color: var(--secondary-background);
+        color: var(--secondary-foreground);
+      }
+    }
+
+    & .referencesButton {
+      border: none;
+      background-color: transparent;
+      color: var(--primary);
+      border-radius: 40px;
+      box-shadow: none;
+      font-size: 16px;
+      font-weight: 400;
+
+      &:hover {
+        background-color: var(--secondary-background);
+        color: var(--secondary-foreground);
+      }
+    }
+  }
+}
+
+.promptActions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+
+  & .generateButton {
+    border-radius: 40px;
+  }
+
+  & .deleteButton {
+    color: var(--destructive-foreground);
+    background-color: var(--destructive);
+    border-radius: 40px;
+
+    &:hover {
+      color: var(--destructive-foreground);
+      background-color: var(--destructive-background);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Media previews
+// ---------------------------------------------------------------------------
+
+.mediaPreviewList {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+
+  & .mediaItem {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+
+    & .previewMedia {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+    }
+
+    & .removeReferenceButton {
+      position: absolute;
+      top: -0.5rem;
+      right: -0.5rem;
+      border-radius: 40px;
+      background-color: #808080;
+      color: white;
+    }
+  }
+}
+
+.tagInput {
+  width: 100px;
+}

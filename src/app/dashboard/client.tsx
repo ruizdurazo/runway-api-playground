@@ -151,20 +151,15 @@ export default function DashboardClient() {
 
             if (payload.new && payload.new.id && payload.new.updated_at) {
               setChats((prev) => {
+                // Skip if already present (optimistic update may have added it)
+                if (prev.some((c) => c.id === payload.new.id)) return prev
                 const newChat = { ...payload.new } as Chat
-                const newChats = [{ ...newChat }, ...prev].sort(
+                return [newChat, ...prev].sort(
                   (a, b) =>
                     new Date(b.updated_at).getTime() -
                     new Date(a.updated_at).getTime(),
                 )
-                console.log("Previous chats count:", prev.length)
-                console.log("New chats count:", newChats.length)
-                console.log("New chat added:", newChat.id)
-                return newChats
               })
-              console.log("UI updated with new chat")
-            } else {
-              console.error("Invalid payload structure for INSERT:", payload)
             }
           },
         )

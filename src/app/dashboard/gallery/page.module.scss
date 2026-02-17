@@ -21,7 +21,7 @@
 
 .mediaItem {
   aspect-ratio: 16/9;
-  background-color: var(--muted);
+  background-color: black;
   border-radius: 0.5rem;
   overflow: hidden;
   position: relative;
@@ -40,6 +40,7 @@
 }
 
 .mediaVideo {
+  object-fit: cover;
   width: 100%;
   height: 100%;
 }

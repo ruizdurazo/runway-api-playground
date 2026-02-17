@@ -8,17 +8,17 @@ import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import styles from "./page.module.scss"
 
-interface MediaItem {
+interface GalleryMediaItem {
   id: string
   path: string
   url: string
   type: "image" | "video"
   created_at: string
-  prompt?: { chat_id: string }
+  prompt?: { chat_id: string; ratio?: string }
 }
 
 export default function GalleryClient() {
-  const [media, setMedia] = useState<MediaItem[]>([])
+  const [media, setMedia] = useState<GalleryMediaItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const fetchMedia = async () => {
@@ -31,7 +31,7 @@ export default function GalleryClient() {
       const { data, error } = await supabase
         .from("media")
         .select(
-          "id, path, type, category, tag, created_at, prompt:prompt_id(chat_id)",
+          "id, path, type, category, tag, created_at, prompt:prompt_id!inner(chat_id, ratio)",
         )
         .eq("user_id", user.id)
         .eq("category", "output")
@@ -42,27 +42,34 @@ export default function GalleryClient() {
         return
       }
 
-      // Get signed URLs for each media item
       const mediaWithUrls = await Promise.all(
         data.map(async (item) => {
           const { data: signedData } = await supabase.storage
             .from("media")
             .createSignedUrl(item.path, 3600)
 
+          // Supabase returns the joined prompt as an object
+          const promptData = item.prompt as unknown as {
+            chat_id: string
+            ratio: string
+          } | null
+
           return {
-            ...item,
-            prompt:
-              item.prompt && "chat_id" in item.prompt
-                ? { chat_id: item.prompt.chat_id as string }
-                : undefined,
+            id: item.id,
+            path: item.path,
+            type: item.type as "image" | "video",
+            created_at: item.created_at,
+            prompt: promptData
+              ? { chat_id: promptData.chat_id, ratio: promptData.ratio }
+              : undefined,
             url: signedData?.signedUrl || "",
           }
         }),
       )
 
       setMedia(mediaWithUrls)
-    } catch (error) {
-      console.error("Error fetching media:", error)
+    } catch (err) {
+      console.error("Error fetching media:", err)
     } finally {
       setIsLoading(false)
     }
@@ -79,6 +86,7 @@ export default function GalleryClient() {
         data: { user },
       } = await supabase.auth.getUser()
       if (!user) return
+
       channel = supabase.channel("media-realtime")
       channel
         .on(
@@ -93,19 +101,21 @@ export default function GalleryClient() {
             if (payload.new.category !== "output") return
             const { data: chatData } = await supabase
               .from("prompts")
-              .select("chat_id")
+              .select("chat_id, ratio")
               .eq("id", payload.new.prompt_id)
               .single()
             const { data: signedData } = await supabase.storage
               .from("media")
               .createSignedUrl(payload.new.path, 3600)
-            const newItem: MediaItem = {
+            const newItem: GalleryMediaItem = {
               id: payload.new.id,
               path: payload.new.path,
               url: signedData?.signedUrl || "",
               type: payload.new.type,
               created_at: payload.new.created_at,
-              prompt: chatData ? { chat_id: chatData.chat_id } : undefined,
+              prompt: chatData
+                ? { chat_id: chatData.chat_id, ratio: chatData.ratio }
+                : undefined,
             }
             setMedia((prev) => [newItem, ...prev])
           },
@@ -121,18 +131,18 @@ export default function GalleryClient() {
           (payload) => {
             const mediaId = payload.old?.id
             if (mediaId) {
-              setMedia((prev) => {
-                const filtered = prev.filter((m) => m.id !== mediaId)
-                return filtered
-              })
+              setMedia((prev) => prev.filter((m) => m.id !== mediaId))
             } else {
-              console.log("DELETE payload.old missing id, refetching gallery")
               fetchMedia()
             }
           },
         )
         .subscribe()
     })()
+
+    return () => {
+      channel?.unsubscribe()
+    }
   }, [])
 
   return (

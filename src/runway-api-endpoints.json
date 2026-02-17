@@ -13,19 +13,19 @@
       },
       "inputs": {
         "promptImage": {
-          "type": "string or array of objects",
+          "type": "string or Array of PromptImages (objects)",
           "required": true,
-          "description": "One or more images to use as prompt. For array: each object has uri (string, required) and position (string, 'first' or 'last', required)."
+          "description": "One of the following shapes: string <uri> A HTTPS URL or data URI containing an encoded image to be used as the first frame of the generated video. Array of objects with uri and position."
         },
         "model": {
           "type": "string",
           "required": true,
-          "validValues": ["gen4_turbo", "gen3a_turbo"],
-          "description": "The model variant to use."
+          "validValues": ["gen4_turbo", "gen3a_turbo", "veo3"]
         },
         "ratio": {
           "type": "string",
           "required": true,
+          "default": "1280:768",
           "validValues": [
             "1280:720",
             "720:1280",
@@ -35,24 +35,20 @@
             "1584:672",
             "1280:768",
             "768:1280"
-          ],
-          "description": "The resolution of the output video. Specific values depend on the model."
+          ]
         },
         "seed": {
           "type": "integer",
-          "constraints": "[0 .. 4294967295]",
-          "description": "Optional seed for reproducibility."
+          "constraints": "[0 .. 4294967295]"
         },
         "promptText": {
           "type": "string",
-          "constraints": "<= 1000 characters",
-          "description": "Optional text prompt."
+          "constraints": "<= 1000 characters"
         },
         "duration": {
           "type": "integer",
           "default": 10,
-          "validValues": [5, 10],
-          "description": "Duration in seconds."
+          "validValues": [5, 8, 10]
         },
         "contentModeration": {
           "type": "object",
@@ -63,6 +59,47 @@
               "validValues": ["auto", "low"]
             }
           }
+        }
+      },
+      "outputs": {
+        "id": "string"
+      }
+    },
+    {
+      "name": "Generate a video from text",
+      "method": "POST",
+      "path": "/v1/text_to_video",
+      "description": "This endpoint will start a new task to generate a video from a text prompt.",
+      "headers": {
+        "X-Runway-Version": {
+          "required": true,
+          "value": "2024-11-06"
+        }
+      },
+      "inputs": {
+        "promptText": {
+          "type": "string",
+          "required": true,
+          "constraints": "<= 1000 characters"
+        },
+        "model": {
+          "type": "string",
+          "required": true,
+          "validValues": ["veo3"]
+        },
+        "ratio": {
+          "type": "string",
+          "required": true,
+          "validValues": ["1280:720", "720:1280"]
+        },
+        "duration": {
+          "type": "integer",
+          "required": true,
+          "value": 8
+        },
+        "seed": {
+          "type": "integer",
+          "constraints": "[0 .. 4294967295]"
         }
       },
       "outputs": {
@@ -82,15 +119,13 @@
       },
       "inputs": {
         "videoUri": {
-          "type": "string",
-          "required": true,
-          "description": "HTTPS URL or data URI of the input video."
+          "type": "string <uri>",
+          "required": true
         },
         "promptText": {
           "type": "string",
           "required": true,
-          "constraints": "<= 1000 characters",
-          "description": "Text prompt."
+          "constraints": "<= 1000 characters"
         },
         "model": {
           "type": "string",
@@ -116,14 +151,14 @@
           "constraints": "[0 .. 4294967295]"
         },
         "references": {
-          "type": "array of objects",
+          "type": "Array of objects",
           "subfields": {
             "type": {
               "type": "string",
               "validValues": ["image"]
             },
             "uri": {
-              "type": "string",
+              "type": "string <uri>",
               "required": true
             }
           }
@@ -179,29 +214,35 @@
             "720:720",
             "960:720",
             "720:960",
-            "1680:720"
+            "1680:720",
+            "1344:768",
+            "768:1344",
+            "1024:1024",
+            "1184:864",
+            "864:1184",
+            "1536:672"
           ]
         },
         "model": {
           "type": "string",
           "required": true,
-          "validValues": ["gen4_image", "gen4_image_turbo"]
+          "validValues": ["gen4_image_turbo", "gen4_image", "gemini_2.5_flash"]
         },
         "seed": {
           "type": "integer",
           "constraints": "[0 .. 4294967295]"
         },
         "referenceImages": {
-          "type": "array of objects",
-          "description": "Up to 3 reference images; required for gen4_image_turbo.",
+          "type": "Array of objects",
+          "description": "An array of up to three images to be used as references for the generated image output. For gen4_image_turbo, at least one reference image is required.",
           "subfields": {
             "uri": {
-              "type": "string",
+              "type": "string <uri>",
               "required": true
             },
             "tag": {
               "type": "string",
-              "constraints": "3-16 chars, alphanumeric + _, starts with letter"
+              "constraints": "A name used to refer to the image reference, from 3 to 16 characters in length."
             }
           }
         },
@@ -233,9 +274,9 @@
       },
       "inputs": {
         "videoUri": {
-          "type": "string",
+          "type": "string <uri>",
           "required": true,
-          "description": "HTTPS URL or data URI of the video."
+          "description": "The video must be less than 4096px on each side. The video duration may not exceed 40 seconds."
         },
         "model": {
           "type": "string",
@@ -262,7 +303,7 @@
         "character": {
           "type": "object",
           "required": true,
-          "description": "Character video or image.",
+          "description": "The character to control. You can either provide a video or an image.",
           "subfields": {
             "type": {
               "type": "string",
@@ -270,7 +311,7 @@
               "validValues": ["video", "image"]
             },
             "uri": {
-              "type": "string",
+              "type": "string <uri>",
               "required": true
             }
           }
@@ -285,8 +326,9 @@
               "validValues": ["video"]
             },
             "uri": {
-              "type": "string",
-              "required": true
+              "type": "string <uri>",
+              "required": true,
+              "description": "The video must be between 3 and 30 seconds in duration."
             }
           }
         },
@@ -339,7 +381,7 @@
       "name": "Get task detail",
       "method": "GET",
       "path": "/v1/tasks/{id}",
-      "description": "Return details about a task.",
+      "description": "Return details about a task. Consumers of this API should not expect updates more frequent than once every five seconds for a given task.",
       "headers": {
         "X-Runway-Version": {
           "required": true,
@@ -348,9 +390,9 @@
       },
       "inputs": {
         "id": {
-          "type": "string",
+          "type": "string <uuid>",
           "required": true,
-          "description": "Task ID (path parameter)."
+          "description": "The ID of a previously-submitted task that has not been canceled or deleted."
         }
       },
       "outputs": {
@@ -377,7 +419,7 @@
       "name": "Cancel or delete a task",
       "method": "DELETE",
       "path": "/v1/tasks/{id}",
-      "description": "Cancels or deletes a task.",
+      "description": "Tasks that are running, pending, or throttled can be canceled by invoking this method. Invoking this method for other tasks will delete them.",
       "headers": {
         "X-Runway-Version": {
           "required": true,
@@ -386,9 +428,9 @@
       },
       "inputs": {
         "id": {
-          "type": "string",
+          "type": "string <uuid>",
           "required": true,
-          "description": "Task ID (path parameter)."
+          "description": "The ID of a previously-submitted task that has not been canceled or deleted."
         }
       },
       "outputs": {
@@ -399,7 +441,7 @@
       "name": "Get organization information",
       "method": "GET",
       "path": "/v1/organization",
-      "description": "Get usage tier and credit balance information about the organization.",
+      "description": "Get usage tier and credit balance information about the organization associated with the API key used to make the request.",
       "headers": {
         "X-Runway-Version": {
           "required": true,
@@ -422,7 +464,7 @@
       "name": "Query credit usage",
       "method": "POST",
       "path": "/v1/organization/usage",
-      "description": "Fetch credit usage data broken down by model and day.",
+      "description": "Fetch credit usage data broken down by model and day for the organization associated with the API key used to make the request. Up to 90 days of data can be queried at a time.",
       "headers": {
         "X-Runway-Version": {
           "required": true,
@@ -432,11 +474,11 @@
       "inputs": {
         "startDate": {
           "type": "string <date>",
-          "description": "Start date (YYYY-MM-DD)."
+          "description": "The start date of the usage data in ISO-8601 format (YYYY-MM-DD). If unspecified, it will default to 30 days before the current date."
         },
         "beforeDate": {
           "type": "string <date>",
-          "description": "End date (YYYY-MM-DD), not inclusive."
+          "description": "The end date of the usage data in ISO-8601 format (YYYY-MM-DD), not inclusive. If unspecified, it will default to thirty days after the start date."
         }
       },
       "outputs": {

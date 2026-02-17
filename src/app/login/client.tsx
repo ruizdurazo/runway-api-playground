@@ -16,12 +16,21 @@ export default function LoginClient() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [name, setName] = useState("")
-  const [mode, setMode] = useState<"signin" | "signup">("signin")
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin")
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (mode === "signin") {
+    if (mode === "forgot") {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      })
+      if (error) {
+        toast.error(error.message)
+      } else {
+        toast.success("Check your email for the password reset link.")
+      }
+    } else if (mode === "signin") {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -75,11 +84,21 @@ export default function LoginClient() {
 
           <div className={styles.subtitleWrapper}>
             <h2 className={styles.subtitle}>
-              {mode === "signin" ? "Log in" : "Create an account"}
+              {mode === "signin"
+                ? "Log in"
+                : mode === "signup"
+                  ? "Create an account"
+                  : "Reset your password"}
             </h2>
             {mode === "signup" && (
               <p className={styles.description}>
                 You will need an API key from Runway to use the API Playground.
+              </p>
+            )}
+            {mode === "forgot" && (
+              <p className={styles.description}>
+                Enter your email and we'll send you a link to reset your
+                password.
               </p>
             )}
           </div>
@@ -105,23 +124,38 @@ export default function LoginClient() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div className={styles.field}>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+            {mode !== "forgot" && (
+              <div className={styles.field}>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            )}
+            {mode === "signin" && (
+              <button
+                type="button"
+                className={styles.forgotLink}
+                onClick={() => setMode("forgot")}
+              >
+                Forgot password?
+              </button>
+            )}
             <Button type="submit" className={styles.submitButton}>
-              {mode === "signin" ? "Log in" : "Sign up"}
+              {mode === "signin"
+                ? "Log in"
+                : mode === "signup"
+                  ? "Sign up"
+                  : "Send reset link"}
             </Button>
           </form>
           <p className={styles.switch}>
             {mode === "signin" ? (
               <>
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <button
                   className={styles.link}
                   onClick={() => setMode("signup")}
@@ -131,7 +165,7 @@ export default function LoginClient() {
               </>
             ) : (
               <>
-                Already have an account?{" "}
+                {mode === "forgot" ? "Remember your password?" : "Already have an account?"}{" "}
                 <button
                   className={styles.link}
                   onClick={() => setMode("signin")}

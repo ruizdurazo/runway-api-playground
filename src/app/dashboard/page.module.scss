@@ -16,38 +16,18 @@
 }
 
 .chatGrid {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 1rem;
-  
-  & > * {
-    min-width: 300px;
-    max-width: 400px;
-    width: 100%;
-  }
-
-  @media (max-width: 1024px) {
-    & > * {
-      min-width: 200px;
-      max-width: 300px;
-    }
-  }
 
   @media (max-width: 767px) {
-    flex-direction: column;
-    
-    & > * {
-      min-width: 100%;
-      max-width: 100%;
-    }
+    grid-template-columns: repeat(1, 1fr);
   }
-  
 }
 
 .chatCard {
   position: relative;
-  min-height: 200px;
+  min-height: 240px;
   // max-width: calc(min(300px, 100%));
 
   // @media (max-width: 767px) {
@@ -80,7 +60,6 @@
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
-
 }
 
 .promptCount {
@@ -101,14 +80,15 @@
   right: 0;
   bottom: 0;
   width: 100%;
-  // height: 100%;
+  height: 100%;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background-color: var(--muted);
-  border-radius: 4px;
+  background-color: black;
+  border-radius: 12px;
+  aspect-ratio: 16/9;
 }
 
 .previewImage,

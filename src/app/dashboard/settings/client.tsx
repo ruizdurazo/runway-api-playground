@@ -7,6 +7,7 @@ import { useState, useEffect, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { getModelDisplayName } from "@/lib/models/registry"
 
 import styles from "./page.module.scss"
 import {
@@ -63,49 +64,59 @@ export default function SettingsClient() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  // Models in human readable format
-  const modelNames = {
-    upscale_v1: "Upscale V1",
-    act_two: "Act-Two",
-    gen4_image: "Gen-4 Image",
-    gen4_image_turbo: "Gen-4 Image Turbo",
-    gen4_turbo: "Gen-4 Turbo",
-    gen4_aleph: "Gen-4 Aleph",
-    // veo3: "Veo 3",
-    // gemini_2.5_flash: "Gemini 2.5 Flash",
-  }
+  const isSupportedModel = (model: string) => !model.startsWith("eleven_")
+
+  const filteredUsageData = useMemo(() => {
+    if (!usageData) return null
+    return {
+      models: usageData.models.filter(isSupportedModel),
+      results: usageData.results.map((r) => ({
+        ...r,
+        usedCredits: r.usedCredits.filter((c) => isSupportedModel(c.model)),
+      })),
+    }
+  }, [usageData])
 
   const chartData = useMemo(() => {
-    if (!usageData) return []
-    const dataMap: Record<string, any> = {}
-    usageData.results.forEach(({ date, usedCredits }) => {
+    if (!filteredUsageData) return []
+    const dataMap: Record<string, { date: string; [key: string]: string | number }> = {}
+    filteredUsageData.results.forEach(({ date, usedCredits }) => {
       dataMap[date] = { date }
       usedCredits.forEach(({ model, amount }) => {
         dataMap[date][model] = amount
       })
     })
-    usageData.models.forEach((model) => {
-      Object.values(dataMap).forEach((dayData: any) => {
+    filteredUsageData.models.forEach((model) => {
+      Object.values(dataMap).forEach((dayData) => {
         if (!(model in dayData)) {
           dayData[model] = 0
         }
       })
     })
     return Object.values(dataMap).sort(
-      (a: any, b: any) =>
-        new Date(a.date).getTime() - new Date(b.date).getTime(),
+      (a, b) =>
+        new Date(a.date as string).getTime() -
+        new Date(b.date as string).getTime(),
     )
-  }, [usageData])
+  }, [filteredUsageData])
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean
+    payload?: Array<{ dataKey: string; value: number }>
+    label?: string
+  }) => {
     if (active && payload && payload.length) {
       return (
         <div className={styles.customTooltip}>
           <strong>{`${label}`}</strong>
-          <p>{`Total: ${payload.reduce((acc: number, pld: any) => acc + pld.value, 0)}`}</p>
-          {payload.map((pld: any) => (
+          <p>{`Total: ${payload.reduce((acc, pld) => acc + pld.value, 0)}`}</p>
+          {payload.map((pld) => (
             <p key={pld.dataKey}>
-              {`${modelNames[pld.dataKey as keyof typeof modelNames] || pld.dataKey}: ${pld.value}`}
+              {`${getModelDisplayName(pld.dataKey)}: ${pld.value}`}
             </p>
           ))}
         </div>
@@ -129,15 +140,14 @@ export default function SettingsClient() {
     if (!apiKey) return
 
     try {
-      // Tomorrow
-      const endDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-      // 30 days ago
+      const endDate = new Date(Date.now() + 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0]
       const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0]
 
       const res = await fetch(
-        // `/api/organization`,
         `/api/organization?startDate=${startDate}&endDate=${endDate}`,
       )
       if (!res.ok) {
@@ -146,10 +156,10 @@ export default function SettingsClient() {
       const data = await res.json()
       setOrganizationData(data.organization)
       setUsageData(data.usage)
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message)
-        toast.error(error.message)
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message)
+        toast.error(err.message)
       } else {
         setError("An unknown error occurred")
         toast.error("An unknown error occurred")
@@ -179,7 +189,7 @@ export default function SettingsClient() {
       toast.error(error.message)
     } else {
       toast.success("Settings updated.")
-      fetchCredits() // Refresh credits after update
+      fetchCredits()
     }
   }
 
@@ -233,14 +243,21 @@ export default function SettingsClient() {
             <h2>Credit Usage Past 30 Days</h2>
             {error ? (
               <p>Error: {error}</p>
-            ) : usageData ? (
+            ) : filteredUsageData ? (
               <div className={styles.chartContainer}>
                 <ResponsiveContainer>
                   <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="date" 
-                      ticks={chartData.length > 0 ? [chartData[0].date, chartData[chartData.length - 1].date] : []} 
+                    <XAxis
+                      dataKey="date"
+                      ticks={
+                        chartData.length > 0
+                          ? [
+                              chartData[0].date as string,
+                              chartData[chartData.length - 1].date as string,
+                            ]
+                          : []
+                      }
                     />
                     <YAxis
                       label={{
@@ -249,13 +266,14 @@ export default function SettingsClient() {
                         position: "insideLeft",
                       }}
                     />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "#00000010" }} />
-                    <Legend
-                      formatter={(value) =>
-                        modelNames[value as keyof typeof modelNames] || value
-                      }
+                    <Tooltip
+                      content={<CustomTooltip />}
+                      cursor={{ fill: "#00000010" }}
                     />
-                    {usageData.models.sort().map((model, index) => (
+                    <Legend
+                      formatter={(value) => getModelDisplayName(value as string)}
+                    />
+                    {filteredUsageData.models.sort().map((model, index) => (
                       <Bar
                         key={model}
                         dataKey={model}
@@ -271,18 +289,18 @@ export default function SettingsClient() {
             )}
           </div>
 
-          {/* Credit Usage per Model Charts*/}
+          {/* Credit Usage per Model Charts */}
           <div>
             <h2>Credit Usage per Model Past 30 Days</h2>
             {error ? (
               <p>Error: {error}</p>
-            ) : usageData ? (
+            ) : filteredUsageData ? (
               <div className={styles.modelCharts}>
-                {usageData.models.sort().map((model, index) => (
+                {filteredUsageData.models.sort().map((model, index) => (
                   <ModelUsageChart
                     key={model}
                     model={model}
-                    displayName={modelNames[model as keyof typeof modelNames] || model}
+                    displayName={getModelDisplayName(model)}
                     data={chartData}
                     color={`hsl(${(index * 137) % 360}, 70%, 50%)`}
                   />
@@ -309,13 +327,14 @@ export default function SettingsClient() {
                 </thead>
                 <tbody>
                   {Object.keys(organizationData.usage.models)
+                    .filter(isSupportedModel)
                     .sort()
                     .map((model) => (
                       <tr key={model}>
-                        <td>{modelNames[model as keyof typeof modelNames]}</td>
+                        <td>{getModelDisplayName(model)}</td>
                         <td>
                           {organizationData.tier.models[model]
-                            .maxDailyGenerations > 0
+                            ?.maxDailyGenerations > 0
                             ? organizationData.tier.models[model]
                                 .maxDailyGenerations
                             : "Unlimited"}

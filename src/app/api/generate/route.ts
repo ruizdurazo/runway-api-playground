@@ -1,8 +1,12 @@
 import { createSupabaseServerClient } from "@/lib/supabaseServer"
 import RunwayML, { TaskFailedError } from "@runwayml/sdk"
 import { NextRequest, NextResponse } from "next/server"
+import { resolveModel, getModelById } from "@/lib/models/registry"
+import { validateModelInputs } from "@/lib/models/validation"
+import { getStrategy } from "./strategies"
 
 export async function POST(request: NextRequest) {
+  // ---- Auth ----------------------------------------------------------------
   const supabase = createSupabaseServerClient(request)
   const {
     data: { user },
@@ -20,17 +24,30 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // ---- Parse request -------------------------------------------------------
   const body = await request.json()
-  const { promptId, model, generationType, assets, ratio = "1280:720" } = body
+  const { promptId, model: rawModel, generationType, assets, ratio } = body
 
-  if (!promptId || !model || !generationType) {
+  if (!promptId || !rawModel || !generationType) {
     return NextResponse.json(
       { message: "Missing required parameters" },
       { status: 400 },
     )
   }
 
-  // Fetch prompt
+  // ---- Resolve model -------------------------------------------------------
+  let model: string
+  try {
+    model = resolveModel(rawModel)
+  } catch {
+    return NextResponse.json(
+      { message: `Unknown model: ${rawModel}` },
+      { status: 400 },
+    )
+  }
+  const modelDef = getModelById(model as Parameters<typeof getModelById>[0])
+
+  // ---- Fetch prompt text ---------------------------------------------------
   const { data: prompt, error: promptError } = await supabase
     .from("prompts")
     .select("prompt_text")
@@ -41,111 +58,74 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Prompt not found" }, { status: 404 })
   }
 
-  const client = new RunwayML({ apiKey })
+  // ---- Fetch input media for validation ------------------------------------
+  const { data: media } = await supabase
+    .from("media")
+    .select("*")
+    .eq("prompt_id", promptId)
+    .eq("category", "input")
 
-  const parameters = {
-    model,
-    promptText: prompt.prompt_text,
-    referenceImages:
-      assets?.map((a: { url: string; tag: string }, index: number) => ({
-        uri: a.url,
-        tag: a.tag || `ref${index + 1}`,
-      })) || [],
-    ratio,
+  const positionsRequired =
+    modelDef.inputs.kind === "standard" && modelDef.inputs.positionsRequired
+  const inputs =
+    media?.map((m) => ({
+      type: (m.type ?? "image") as "image" | "video",
+      url: m.url || "",
+      tag: m.tag,
+      ...(positionsRequired ? { position: "first" as const } : {}),
+    })) || []
+
+  // ---- Validate ------------------------------------------------------------
+  try {
+    validateModelInputs(model, generationType, prompt.prompt_text, inputs, ratio)
+  } catch (err) {
+    return NextResponse.json(
+      { message: (err as Error).message },
+      { status: 400 },
+    )
   }
 
+  // ---- Determine strategy --------------------------------------------------
+  // If no assets provided and model has a text-only endpoint, use that instead
+  const hasAssets = assets && assets.length > 0
+  const endpoint =
+    !hasAssets && modelDef.textOnlyEndpoint
+      ? modelDef.textOnlyEndpoint
+      : modelDef.endpoint
+
+  const strategy = getStrategy(endpoint)
+
+  // ---- Execute strategy ----------------------------------------------------
   try {
-    let effectiveGenerationType = generationType
-    let url
-    if (model === "upscale_v1") {
-      if (!assets || assets.length !== 1) {
-        throw new Error("Upscale requires exactly one video input")
-      }
-    } else if (assets?.length > 3) {
-      throw new Error("Maximum of 3 reference images allowed")
-    }
-    if (model === "upscale_v1") {
-      const videoParams = {
-        model: "upscale_v1",
-        videoUri: assets[0].url,
-      }
-      const task = await client.videoUpscale
-        // @ts-expect-error - Model type mismatch
-        .create(videoParams)
-        .waitForTaskOutput()
-      url = task.output?.[0]
-      effectiveGenerationType = "video"
-    } else if (generationType === "image") {
-      let effectiveModel = model
-      let refImages =
-        assets?.map((a: { url: string; tag: string }, index: number) => ({
-          uri: a.url,
-          tag: a.tag || `ref${index + 1}`,
-        })) || []
-      if (model === "gen4_image" && refImages.length > 0) {
-        effectiveModel = "gen4_image_turbo"
-      }
-      const params = {
-        model: effectiveModel,
-        promptText: prompt.prompt_text,
-        ratio,
-        contentModeration: { publicFigureThreshold: "low" },
-      }
-      if (refImages.length > 0) {
-        // @ts-expect-error - Type mismatch
-        params.referenceImages = refImages
-      }
-      const task = await client.textToImage
-        // @ts-expect-error - Model type mismatch
-        .create(params)
-        .waitForTaskOutput()
-      url = task.output?.[0]
-    } else {
-      const imageParams = {
-        model: "gen4_image_turbo",
-        promptText: parameters.promptText,
-        referenceImages:
-          assets?.map((a: { url: string; tag: string }, index: number) => ({
-            uri: a.url,
-            tag: a.tag || `ref${index + 1}`,
-          })) || [],
-        ratio,
-      }
-      const imageTask = await client.textToImage
-        // @ts-expect-error - Model type mismatch
-        .create(imageParams)
-        .waitForTaskOutput()
-      const imageUrl = imageTask.output?.[0]
-      if (!imageUrl) throw new Error("No image URL")
+    const client = new RunwayML({ apiKey })
+    const result = await strategy.execute({
+      client,
+      model,
+      promptText: prompt.prompt_text,
+      assets: assets || [],
+      ratio,
+      additionalParams: modelDef.additionalParams
+        ? Object.fromEntries(
+            Object.entries(modelDef.additionalParams).map(([k, v]) => [
+              k,
+              v.default,
+            ]),
+          )
+        : undefined,
+    })
 
-      const videoParams = {
-        model: parameters.model,
-        promptImage: imageUrl,
-        promptText: parameters.promptText,
-        ratio,
-        duration: model === "veo3" ? 8 : 5,
-      }
-      const videoTask = await client.imageToVideo
-        // @ts-expect-error - Model type mismatch
-        .create(videoParams)
-        .waitForTaskOutput()
-      url = videoTask.output?.[0]
-    }
-    if (!url) throw new Error("No output URL")
-
-    const mediaResponse = await fetch(url)
+    // ---- Post-processing: save output to Supabase --------------------------
+    const mediaResponse = await fetch(result.url)
     if (!mediaResponse.ok) throw new Error("Failed to fetch generated media")
 
     const mediaBlob = await mediaResponse.blob()
-
-    const ext = effectiveGenerationType === "image" ? "jpg" : "mp4"
+    const ext = result.mediaType === "image" ? "jpg" : "mp4"
     const filename = `${promptId}.${ext}`
 
     const { error: uploadError } = await supabase.storage
       .from("media")
       .upload(`${user.id}/${filename}`, mediaBlob, {
-        contentType:
-          effectiveGenerationType === "image" ? "image/jpeg" : "video/mp4",
+        contentType: result.mediaType === "image" ? "image/jpeg" : "video/mp4",
       })
 
     if (uploadError) throw uploadError
@@ -155,7 +135,7 @@ export async function POST(request: NextRequest) {
     const { error: insertError } = await supabase.from("media").insert({
       prompt_id: promptId,
       path,
-      type: effectiveGenerationType,
+      type: result.mediaType,
       category: "output",
       user_id: user.id,
     })
@@ -170,16 +150,16 @@ export async function POST(request: NextRequest) {
         { message: "Generation failed: " + JSON.stringify(error.taskDetails) },
         { status: 500 },
       )
-    } else if (error instanceof Error) {
+    }
+    if (error instanceof Error) {
       return NextResponse.json(
         { message: error.message || "Internal server error" },
         { status: 500 },
       )
-    } else {
-      return NextResponse.json(
-        { message: "Internal server error" },
-        { status: 500 },
-      )
     }
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 },
+    )
   }
 }
