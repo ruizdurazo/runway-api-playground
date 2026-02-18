@@ -1,8 +1,11 @@
 # Runway API Playground
 
+
+![Runway API Playground](./public/screenshot.png)
+
 This is a playground for the [Runway API](https://docs.dev.runwayml.com/).
 
-It's a simple web app that allows users to create and edit prompts that will generate images and videos with Runway's different AI models.
+It's a simple web app that allows users to create and edit prompts that will generate images and videos with the different AI models available through the Runway API.
 
 ## Tools
 
