@@ -114,23 +114,33 @@ export async function POST(request: NextRequest) {
         : undefined,
     })
 
-    // ---- Post-processing: save output to Supabase --------------------------
+    // ---- Post-processing: clean old outputs, then save new one ---------------
+    const { data: oldOutputs } = await supabase
+      .from("media")
+      .select("id, path")
+      .eq("prompt_id", promptId)
+      .eq("category", "output")
+
+    for (const out of oldOutputs ?? []) {
+      await supabase.storage.from("media").remove([out.path])
+      await supabase.from("media").delete().eq("id", out.id)
+    }
+
     const mediaResponse = await fetch(result.url)
     if (!mediaResponse.ok) throw new Error("Failed to fetch generated media")
 
     const mediaBlob = await mediaResponse.blob()
     const ext = result.mediaType === "image" ? "jpg" : "mp4"
-    const filename = `${promptId}.${ext}`
+    const filename = `${promptId}-${Date.now()}.${ext}`
 
+    const path = `${user.id}/${filename}`
     const { error: uploadError } = await supabase.storage
       .from("media")
-      .upload(`${user.id}/${filename}`, mediaBlob, {
+      .upload(path, mediaBlob, {
         contentType: result.mediaType === "image" ? "image/jpeg" : "video/mp4",
       })
 
     if (uploadError) throw uploadError
-
-    const path = `${user.id}/${filename}`
 
     const { error: insertError } = await supabase.from("media").insert({
       prompt_id: promptId,

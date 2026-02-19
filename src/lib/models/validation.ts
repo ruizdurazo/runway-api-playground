@@ -130,6 +130,11 @@ function validateStandardInputs(
     if (input.tag && !config.tagsAllowed) {
       throw new Error(`Tags are not allowed for ${modelName}`)
     }
+    if (config.tagsAllowed && input.tag && (input.tag.length < 3 || input.tag.length > 16)) {
+      throw new Error(
+        `Tag "${input.tag}" on input ${i + 1} must be 3–16 characters`,
+      )
+    }
     if (config.positionsRequired && !input.position) {
       throw new Error(
         `Position is required for input ${i + 1} in ${modelName}`,

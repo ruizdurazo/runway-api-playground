@@ -27,6 +27,7 @@ async function fetchSinglePrompt(promptId: string): Promise<Prompt> {
     .from("prompts")
     .select("*, media(id, path, type, category, tag)")
     .eq("id", promptId)
+    .order("id", { referencedTable: "media", ascending: true })
     .single()
   if (error) throw error
   const processedMedia = await signMediaUrls(data.media ?? [])
@@ -54,6 +55,7 @@ export function usePrompts(chatId: string) {
         .select("*, media(id, path, type, category, tag)")
         .eq("chat_id", chatId)
         .order("created_at", { ascending: true })
+        .order("id", { referencedTable: "media", ascending: true })
 
       if (error) {
         console.error(error)
@@ -147,6 +149,8 @@ export function usePrompts(chatId: string) {
         // Upload input files
         const assets = await Promise.all(
           filesWithTags.map(async (item, index) => {
+            const effectiveTag = item.tag || `ref${index + 1}`
+
             const filename = `${user.id}/inputs/${promptId}-${item.file.name}`
             const { error: uploadError } = await supabase.storage
               .from("media")
@@ -160,7 +164,7 @@ export function usePrompts(chatId: string) {
               path: filename,
               type,
               category: "input",
-              tag: item.tag || null,
+              tag: effectiveTag,
             })
             if (insertError) throw insertError
 
@@ -172,7 +176,7 @@ export function usePrompts(chatId: string) {
 
             return {
               url: signedData.signedUrl,
-              tag: item.tag || `ref${index + 1}`,
+              tag: effectiveTag,
             }
           }),
         )
@@ -268,11 +272,11 @@ export function usePrompts(chatId: string) {
         await supabase.from("media").delete().eq("id", del.id)
       }
 
-      // Update tags on kept media
-      for (const m of existingMedia) {
+      // Update tags on kept media (assign fallback if empty)
+      for (const [i, m] of existingMedia.entries()) {
         await supabase
           .from("media")
-          .update({ tag: m.tag || null })
+          .update({ tag: m.tag || `ref${i + 1}` })
           .eq("id", m.id)
       }
 
@@ -282,8 +286,11 @@ export function usePrompts(chatId: string) {
       } = await supabase.auth.getUser()
       if (!user) throw new Error("User not found")
 
+      const existingCount = existingMedia.length
       await Promise.all(
-        newFilesWithTags.map(async ({ file, tag }) => {
+        newFilesWithTags.map(async ({ file, tag }, index) => {
+          const effectiveTag = tag || `ref${existingCount + index + 1}`
+
           const filename = `${user.id}/inputs/${promptId}-${Date.now()}-${file.name}`
           const { error: uploadError } = await supabase.storage
             .from("media")
@@ -297,7 +304,7 @@ export function usePrompts(chatId: string) {
             path: filename,
             type,
             category: "input",
-            tag: tag || null,
+            tag: effectiveTag,
           })
           if (insertError) throw insertError
         }),
@@ -313,26 +320,49 @@ export function usePrompts(chatId: string) {
       const prompt = freshPrompt ?? prompts.find((p) => p.id === promptId)
       if (!prompt) throw new Error("Prompt not found")
 
-      const inputMedia =
-        prompt.media?.filter((m) => m.category === "input") ?? []
+      // Delete previous outputs from storage and DB
+      const { data: oldOutputs } = await supabase
+        .from("media")
+        .select("id, path")
+        .eq("prompt_id", promptId)
+        .eq("category", "output")
+
+      for (const out of oldOutputs ?? []) {
+        await supabase.storage.from("media").remove([out.path])
+        await supabase.from("media").delete().eq("id", out.id)
+      }
+
+      // Fetch input media from DB and re-sign URLs so they're fresh
+      const { data: dbInputs } = await supabase
+        .from("media")
+        .select("id, path, type, tag")
+        .eq("prompt_id", promptId)
+        .eq("category", "input")
+        .order("id", { ascending: true })
+
+      const inputMedia = dbInputs ?? []
 
       validateModelInputs(
         prompt.model,
         prompt.generation_type,
         prompt.prompt_text,
         inputMedia.map((m) => ({
-          type: m.type ?? ("image" as const),
-          url: m.url,
+          type: (m.type ?? "image") as "image" | "video",
           tag: m.tag,
           position: "first" as const,
         })),
         prompt.ratio,
       )
 
-      const assets = inputMedia.map((m, i) => ({
-        url: m.url,
-        tag: m.tag || `ref${i + 1}`,
-      }))
+      const assets = await Promise.all(
+        inputMedia.map(async (m) => {
+          const { data: signedData, error: signError } = await supabase.storage
+            .from("media")
+            .createSignedUrl(m.path, 3600)
+          if (signError) throw signError
+          return { url: signedData.signedUrl, tag: m.tag ?? "" }
+        }),
+      )
 
       const response = await fetch("/api/generate", {
         method: "POST",

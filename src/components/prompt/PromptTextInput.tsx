@@ -11,7 +11,7 @@ interface PromptTextInputProps {
 }
 
 export default function PromptTextInput({ placeholder }: PromptTextInputProps) {
-  const { mode, model, text, setText, addFiles, maxInputCount, currentInputCount } =
+  const { mode, model, text, setText, addFiles, setShowReferences, maxInputCount, currentInputCount } =
     usePromptContext()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -55,6 +55,7 @@ export default function PromptTextInput({ placeholder }: PromptTextInputProps) {
     }
 
     if (pastedFiles.length > 0) {
+      setShowReferences(true)
       addFiles(pastedFiles)
     }
   }

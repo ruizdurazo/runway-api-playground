@@ -35,67 +35,68 @@ export default function PromptMediaItem() {
 
   return (
     <>
-      {/* Existing media (edit mode) */}
-      {hasExisting && (
-        <div className={styles.mediaPreviewList}>
-          {existingMedia.map((m, index) => (
-            <div key={`existing-${index}`} className={styles.mediaItem}>
-              {m.type === "image" ? (
-                <img src={m.url} alt="" className={styles.previewMedia} />
-              ) : (
-                <video src={m.url} className={styles.previewMedia} />
-              )}
-              {tagsAllowed && (
-                <Input
-                  value={m.tag ?? ""}
-                  onChange={(e) => updateTag(index, e.target.value, true)}
-                  placeholder="Tag"
-                  className={styles.tagInput}
-                />
-              )}
-              <Button
-                type="button"
-                className={styles.removeReferenceButton}
-                size="sm"
-                onClick={() => removeExistingMedia(index)}
-              >
-                x
-              </Button>
-            </div>
-          ))}
-        </div>
+      {tagsAllowed && (hasExisting || hasNew) && (
+        <p className={styles.referenceHint}>
+          Use tag names in your prompt to reference images (e.g. &ldquo;a photo of &lt;ref1&gt;&rdquo;).
+          Leave empty for auto-assigned tags.
+        </p>
       )}
 
-      {/* New file previews */}
-      {hasNew && (
-        <div className={styles.mediaPreviewList}>
-          {newFiles.map((item, index) => (
-            <div key={`new-${index}`} className={styles.mediaItem}>
-              {item.file.type.startsWith("image/") ? (
-                <img src={item.preview} alt="" className={styles.previewMedia} />
-              ) : (
-                <video src={item.preview} className={styles.previewMedia} />
-              )}
-              {tagsAllowed && (
-                <Input
-                  value={item.tag}
-                  onChange={(e) => updateTag(index, e.target.value, false)}
-                  placeholder="Tag"
-                  className={styles.tagInput}
-                />
-              )}
-              <Button
-                type="button"
-                className={styles.removeReferenceButton}
-                size="sm"
-                onClick={() => removeNewFile(index)}
-              >
-                x
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className={styles.mediaPreviewList}>
+        {existingMedia.map((m, index) => (
+          <div key={`existing-${index}`} className={styles.mediaItem}>
+            {m.type === "image" ? (
+              <img src={m.url} alt="" className={styles.previewMedia} />
+            ) : (
+              <video src={m.url} className={styles.previewMedia} />
+            )}
+            {tagsAllowed && (
+              <Input
+                value={m.tag ?? ""}
+                onChange={(e) => updateTag(index, e.target.value, true)}
+                placeholder={`ref${index + 1}`}
+                maxLength={16}
+                className={styles.tagInput}
+              />
+            )}
+            <Button
+              type="button"
+              className={styles.removeReferenceButton}
+              size="sm"
+              onClick={() => removeExistingMedia(index)}
+            >
+              x
+            </Button>
+          </div>
+        ))}
+
+        {newFiles.map((item, index) => (
+          <div key={`new-${index}`} className={styles.mediaItem}>
+            {item.file.type.startsWith("image/") ? (
+              <img src={item.preview} alt="" className={styles.previewMedia} />
+            ) : (
+              <video src={item.preview} className={styles.previewMedia} />
+            )}
+            {tagsAllowed && (
+              <Input
+                value={item.tag}
+                onChange={(e) => updateTag(index, e.target.value, false)}
+                placeholder={`ref${existingMedia.length + index + 1}`}
+                maxLength={16}
+                className={styles.tagInput}
+              />
+            )}
+            <Button
+              type="button"
+              className={styles.removeReferenceButton}
+              size="sm"
+              onClick={() => removeNewFile(index)}
+            >
+              x
+            </Button>
+          </div>
+        ))}
+      </div>
     </>
   )
 }
