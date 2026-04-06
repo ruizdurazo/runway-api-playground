@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { flushSync } from "react-dom"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/Button"
 import { Card, CardContent } from "@/components/ui/Card"
@@ -242,7 +243,18 @@ export default function DashboardClient() {
     }
   }
 
-  const handleDelete = async (chatId: string) => {
+  const removeChatFromUiSync = (chatId: string) => {
+    flushSync(() => {
+      setChats((prev) => prev.filter((c) => c.id !== chatId))
+      setChatDetails((prev) => {
+        const next = { ...prev }
+        delete next[chatId]
+        return next
+      })
+    })
+  }
+
+  const runDeleteChatAsync = async (chatId: string) => {
     try {
       // Fetch prompts
       const { data: prompts, error: pError } = await supabase
@@ -275,12 +287,21 @@ export default function DashboardClient() {
         .eq("id", chatId)
       if (chatError) throw chatError
 
-      // Update state
-      setChats(chats.filter((c) => c.id !== chatId))
       toast.success("Chat deleted successfully")
     } catch (error) {
       console.error("Error deleting chat:", error)
       toast.error("Failed to delete chat")
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user) {
+        const { data } = await supabase
+          .from("chats")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("updated_at", { ascending: false })
+        setChats(data || [])
+      }
     }
   }
 
@@ -297,9 +318,12 @@ export default function DashboardClient() {
         {chats.map((chat) => {
           const details = chatDetails[chat.id]
           return (
-            <Link key={chat.id} href={`/dashboard/chat/${chat.id}`}>
-              <Card className={styles.chatCard}>
-                <CardContent className={styles.chatCardContent}>
+            <Card key={chat.id} className={styles.chatCard}>
+              <CardContent className={styles.chatCardContent}>
+                <Link
+                  href={`/dashboard/chat/${chat.id}`}
+                  className={styles.chatCardLink}
+                >
                   <div className={styles.mediaPreview}>
                     {(() => {
                       if (details === undefined) {
@@ -339,33 +363,34 @@ export default function DashboardClient() {
                   <p className={styles.chatDate}>
                     {formatRelativeTime(new Date(chat.updated_at), currentTime)}
                   </p>
+                </Link>
 
-                  {/* Dropdown menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={styles.menuTrigger}
-                      >
-                        ⋮
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDelete(chat.id)
-                        }}
-                      >
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </CardContent>
-              </Card>
-            </Link>
+                {/* Dropdown menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className={styles.menuTrigger}
+                    >
+                      ⋮
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => {
+                        removeChatFromUiSync(chat.id)
+                        void runDeleteChatAsync(chat.id)
+                      }}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </CardContent>
+            </Card>
           )
         })}
       </div>

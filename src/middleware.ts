@@ -7,8 +7,15 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession()
 
-  if (!session && req.nextUrl.pathname.startsWith("/dashboard")) {
+  const pathname = req.nextUrl.pathname
+
+  if (!session && pathname.startsWith("/dashboard")) {
     const redirectUrl = new URL("/login", req.url)
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  if (session && (pathname === "/" || pathname === "/login")) {
+    const redirectUrl = new URL("/dashboard", req.url)
     return NextResponse.redirect(redirectUrl)
   }
 
@@ -16,5 +23,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/auth/callback"],
+  matcher: ["/", "/login", "/dashboard/:path*", "/auth/callback"],
 }

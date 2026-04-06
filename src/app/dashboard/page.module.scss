@@ -25,6 +25,17 @@
   }
 }
 
+.chatCardContent {
+  position: relative;
+  padding: 0;
+}
+
+.chatCardLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
 .chatCard {
   position: relative;
   min-height: 240px;

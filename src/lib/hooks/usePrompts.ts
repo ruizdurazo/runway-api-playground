@@ -22,6 +22,19 @@ async function signMediaUrls(
   )
 }
 
+function scrollPromptCardIntoView(promptId: string) {
+  if (typeof document === "undefined") return
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.getElementById(promptId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
+      })
+    })
+  })
+}
+
 async function fetchSinglePrompt(promptId: string): Promise<Prompt> {
   const { data, error } = await supabase
     .from("prompts")
@@ -144,6 +157,7 @@ export function usePrompts(chatId: string) {
           ratio,
         },
       ])
+      scrollPromptCardIntoView(promptId)
 
       try {
         // Upload input files

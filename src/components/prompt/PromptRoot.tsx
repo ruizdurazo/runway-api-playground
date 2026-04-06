@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { toast } from "sonner"
 
 import { MODEL_REGISTRY, getModelsByGenerationType, isValidModel, resolveModel } from "@/lib/models/registry"
@@ -89,6 +89,15 @@ export default function PromptRoot({
     prompt?.ratio ?? MODEL_REGISTRY[initials.model]?.ratios[0] ?? "1280:720",
   )
   const [showReferences, setShowReferences] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  const scrollCardIntoView = useCallback(() => {
+    cardRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "nearest",
+    })
+  }, [])
 
   // Hydrate from localStorage after mount (new prompts only)
   useEffect(() => {
@@ -341,6 +350,7 @@ export default function PromptRoot({
           toast.error((err as Error).message)
         }
       } else {
+        scrollCardIntoView()
         setMode("loading")
         try {
           if (!onEdit || !prompt || !onRegenerate) return
@@ -386,6 +396,7 @@ export default function PromptRoot({
       onEdit,
       onRegenerate,
       prompt,
+      scrollCardIntoView,
     ],
   )
 
@@ -457,6 +468,7 @@ export default function PromptRoot({
   return (
     <PromptContext.Provider value={contextValue}>
       <Card
+        ref={cardRef}
         id={id}
         className={`${styles.promptCard} ${mode === "input" ? styles.inputMode : ""} ${isMediaSized ? styles.mediaSized : ""}`}
         style={

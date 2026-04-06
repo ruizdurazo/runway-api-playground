@@ -29,3 +29,37 @@ Styling:
 
 - Use SCSS for components and styling.
 - Never use Tailwind CSS.
+
+Dependencies:
+
+- @radix-ui/react-dropdown-menu
+- @radix-ui/react-icons
+- @radix-ui/react-label
+- @radix-ui/react-select
+- @radix-ui/react-slot
+- @radix-ui/react-toggle-group
+- @runwayml/sdk
+- @supabase/auth-ui-react
+- @supabase/auth-ui-shared
+- @supabase/ssr
+- @supabase/supabase-js
+- next
+- next-themes
+- react
+- react-dom
+- recharts
+- sass
+- sonner
+
+Dev Dependencies:
+
+- @eslint/eslintrc
+- @types/node
+- @types/react
+- @types/react-dom
+- @typescript-eslint/eslint-plugin
+- @typescript-eslint/parser
+- eslint
+- eslint-config-next
+- prettier
+- typescript

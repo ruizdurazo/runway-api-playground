@@ -15,7 +15,8 @@ export default function PromptTextInput({ placeholder }: PromptTextInputProps) {
     usePromptContext()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const isHidden = model === "upscale_v1" || mode === "view"
+  const isHidden =
+    model === "upscale_v1" || mode === "view" || mode === "loading"
 
   const resize = (el: HTMLTextAreaElement | null) => {
     if (!el) return
