@@ -14,7 +14,7 @@ It's a simple web app that allows users to create and edit prompts that will gen
 - [Next.js](https://nextjs.org/)
 - [React](https://react.dev/)
 - [TypeScript](https://www.typescriptlang.org/)
-- [Shadcn UI](https://ui.shadcn.com/)
+- [Radix UI](https://www.radix-ui.com/)
 - [Sass](https://sass-lang.com/)
 - [Sonner](https://sonner.emilkowal.ski/)
 
