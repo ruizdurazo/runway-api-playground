@@ -66,3 +66,5 @@ Dev Dependencies:
 - prettier
 - typescript
 - typescript-eslint
+
+Never commit code using git commit by yourself.

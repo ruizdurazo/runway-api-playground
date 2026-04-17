@@ -1,0 +1,6 @@
+# mcp-use deployment
+.mcp-use
+node_modules
+dist
+.env
+.env.local
