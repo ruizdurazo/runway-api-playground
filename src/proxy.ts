@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createSupabaseServerClient } from "./lib/supabaseServer"
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const supabase = createSupabaseServerClient(req)
   const {
     data: { session },

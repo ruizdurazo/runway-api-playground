@@ -3,11 +3,11 @@
 import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
 import { Label } from "@/components/ui/Label"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { getModelDisplayName } from "@/lib/models/registry"
+import { getModelDisplayName } from "@runway-playground/shared"
 
 import styles from "./page.module.scss"
 import {
@@ -55,6 +55,31 @@ interface UsageData {
   models: string[]
 }
 
+function UsageSummaryTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: Array<{ dataKey: string; value: number }>
+  label?: string
+}) {
+  if (active && payload && payload.length) {
+    return (
+      <div className={styles.customTooltip}>
+        <strong>{`${label}`}</strong>
+        <p>{`Total: ${payload.reduce((acc, pld) => acc + pld.value, 0)}`}</p>
+        {payload.map((pld) => (
+          <p key={pld.dataKey}>
+            {`${getModelDisplayName(pld.dataKey)}: ${pld.value}`}
+          </p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
 export default function SettingsClient() {
   const [name, setName] = useState("")
   const [apiKey, setApiKey] = useState("")
@@ -100,31 +125,6 @@ export default function SettingsClient() {
     )
   }, [filteredUsageData])
 
-  const CustomTooltip = ({
-    active,
-    payload,
-    label,
-  }: {
-    active?: boolean
-    payload?: Array<{ dataKey: string; value: number }>
-    label?: string
-  }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className={styles.customTooltip}>
-          <strong>{`${label}`}</strong>
-          <p>{`Total: ${payload.reduce((acc, pld) => acc + pld.value, 0)}`}</p>
-          {payload.map((pld) => (
-            <p key={pld.dataKey}>
-              {`${getModelDisplayName(pld.dataKey)}: ${pld.value}`}
-            </p>
-          ))}
-        </div>
-      )
-    }
-    return null
-  }
-
   const fetchUser = async () => {
     const {
       data: { user },
@@ -135,7 +135,7 @@ export default function SettingsClient() {
     }
   }
 
-  const fetchCredits = async () => {
+  const fetchCredits = useCallback(async () => {
     setError(null)
     if (!apiKey) return
 
@@ -165,7 +165,7 @@ export default function SettingsClient() {
         toast.error("An unknown error occurred")
       }
     }
-  }
+  }, [apiKey])
 
   useEffect(() => {
     fetchUser()
@@ -178,7 +178,7 @@ export default function SettingsClient() {
       setOrganizationData(null)
       setUsageData(null)
     }
-  }, [apiKey])
+  }, [apiKey, fetchCredits])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -267,7 +267,7 @@ export default function SettingsClient() {
                       }}
                     />
                     <Tooltip
-                      content={<CustomTooltip />}
+                      content={<UsageSummaryTooltip />}
                       cursor={{ fill: "#00000010" }}
                     />
                     <Legend

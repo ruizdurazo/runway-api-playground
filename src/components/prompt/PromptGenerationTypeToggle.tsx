@@ -1,7 +1,7 @@
 "use client"
 
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/ToggleGroup"
-import type { GenerationType } from "@/lib/models/types"
+import type { GenerationType } from "@runway-playground/shared"
 import { usePromptContext } from "./context"
 
 /**

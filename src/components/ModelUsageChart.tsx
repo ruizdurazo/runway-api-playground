@@ -19,6 +19,24 @@ interface ModelUsageChartProps {
   color: string
 }
 
+interface BarModelTooltipProps {
+  active?: boolean
+  label?: string
+  payload?: ReadonlyArray<{ value?: number | string }>
+}
+
+function BarModelTooltip({ active, payload, label }: BarModelTooltipProps) {
+  if (active && payload && payload.length) {
+    return (
+      <div className={styles.customTooltip}>
+        <strong>{label}</strong>
+        <div>Credits: {payload[0].value}</div>
+      </div>
+    )
+  }
+  return null
+}
+
 export function ModelUsageChart({
   model,
   displayName,
@@ -26,18 +44,6 @@ export function ModelUsageChart({
   color,
 }: ModelUsageChartProps) {
   const chartData = data.map((d) => ({ date: d.date, usage: d[model] ?? 0 }))
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className={styles.customTooltip}>
-          <strong>{label}</strong>
-          <div>Credits: {payload[0].value}</div>
-        </div>
-      )
-    }
-    return null
-  }
 
   return (
     <div>
@@ -62,7 +68,7 @@ export function ModelUsageChart({
               }}
             />
             <Tooltip
-              content={<CustomTooltip />}
+              content={<BarModelTooltip />}
               cursor={{ fill: "#00000010" }}
             />
             <Bar dataKey="usage" fill={color} />

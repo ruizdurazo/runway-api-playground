@@ -1,35 +1,21 @@
-import { dirname } from "path"
-import { fileURLToPath } from "url"
-import { FlatCompat } from "@eslint/eslintrc"
-
-import * as tsEslint from "@typescript-eslint/eslint-plugin"
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-})
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals"
+import tseslint from "typescript-eslint"
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals"),
-  ...compat.extends("plugin:@typescript-eslint/recommended"),
   {
     ignores: [
       "node_modules/**",
-      ".next/**",
-      "out/**",
-      "build/**",
-      "next-env.d.ts",
+      "packages/runway-mcp/dist/**",
+      "packages/runway-mcp/.mcp-use/**",
     ],
   },
+  ...nextCoreWebVitals,
+  ...tseslint.configs.recommended,
   {
-    plugins: {
-      "@typescript-eslint": tsEslint,
-    },
     rules: {
       semi: ["error", "never"],
-      "@typescript-eslint/semi": ["error", "never"],
+      // React Compiler / hooks v7; revisit with refactors (sync setState in effects).
+      "react-hooks/set-state-in-effect": "off",
     },
   },
 ]

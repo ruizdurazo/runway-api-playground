@@ -1,8 +1,7 @@
 "use client"
 
 import { createContext, useContext } from "react"
-import type { Model } from "@/lib/models/registry"
-import type { ModelDefinition, GenerationType } from "@/lib/models/types"
+import type { Model, ModelDefinition, GenerationType } from "@runway-playground/shared"
 import type { Prompt, MediaItem } from "@/lib/types"
 
 // ---------------------------------------------------------------------------

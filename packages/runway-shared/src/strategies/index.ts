@@ -1,4 +1,4 @@
-import type { EndpointType } from "@/lib/models/types"
+import type { EndpointType } from "../models/types"
 import type { GenerationStrategy } from "./types"
 
 import { textToImageStrategy } from "./textToImage"

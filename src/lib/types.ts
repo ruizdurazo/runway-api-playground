@@ -1,5 +1,4 @@
-import type { Model } from "@/lib/models/registry"
-import type { GenerationType } from "@/lib/models/types"
+import type { Model, GenerationType } from "@runway-playground/shared"
 
 // ---------------------------------------------------------------------------
 // Media

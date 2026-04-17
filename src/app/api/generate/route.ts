@@ -1,9 +1,12 @@
 import { createSupabaseServerClient } from "@/lib/supabaseServer"
 import RunwayML, { TaskFailedError } from "@runwayml/sdk"
 import { NextRequest, NextResponse } from "next/server"
-import { resolveModel, getModelById } from "@/lib/models/registry"
-import { validateModelInputs } from "@/lib/models/validation"
-import { getStrategy } from "./strategies"
+import {
+  getModelById,
+  getStrategy,
+  resolveModel,
+  validateModelInputs,
+} from "@runway-playground/shared"
 
 export async function POST(request: NextRequest) {
   // ---- Auth ----------------------------------------------------------------

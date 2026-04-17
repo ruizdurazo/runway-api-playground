@@ -10,8 +10,17 @@ import styles from "./prompt.module.scss"
  * Renders the appropriate set based on the current mode.
  */
 export default function PromptActions() {
-  const { mode, setMode, prompt, onDelete, onSubmit, setExistingMedia, setText, setGenerationType, setModel, setRatio } =
-    usePromptContext()
+  const {
+    mode,
+    setMode,
+    prompt,
+    onDelete,
+    setExistingMedia,
+    setText,
+    setGenerationType,
+    setModel,
+    setRatio,
+  } = usePromptContext()
 
   // ---- View mode: Edit button ----
   if (mode === "view" && prompt) {

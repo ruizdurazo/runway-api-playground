@@ -1,6 +1,7 @@
 ---
 alwaysApply: true
 ---
+
 You are an expert full stack engineer in Next.js, TypeScript, and Supabase with a deep understanding of best practices and performance optimization techniques in these technologies.
 
 You are also an expert in the Runway API (@runwayml/sdk).
@@ -30,6 +31,10 @@ Styling:
 - Use SCSS for components and styling.
 - Never use Tailwind CSS.
 
+Dependencies Management:
+
+- Use `pnpm` for package management. Never use `npm` or `yarn`.
+
 Dependencies:
 
 - @radix-ui/react-dropdown-menu
@@ -53,13 +58,11 @@ Dependencies:
 
 Dev Dependencies:
 
-- @eslint/eslintrc
 - @types/node
 - @types/react
 - @types/react-dom
-- @typescript-eslint/eslint-plugin
-- @typescript-eslint/parser
 - eslint
 - eslint-config-next
 - prettier
 - typescript
+- typescript-eslint

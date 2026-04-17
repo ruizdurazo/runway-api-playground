@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
-import { validateModelInputs } from "@/lib/models/validation"
+import { validateModelInputs } from "@runway-playground/shared"
 import type { Prompt, MediaItem, GeneratePayload, EditPayload } from "@/lib/types"
 
 // ---------------------------------------------------------------------------

@@ -3,10 +3,16 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { toast } from "sonner"
 
-import { MODEL_REGISTRY, getModelsByGenerationType, isValidModel, resolveModel } from "@/lib/models/registry"
-import type { Model } from "@/lib/models/registry"
-import type { GenerationType, ModelDefinition } from "@/lib/models/types"
-import { validateModelInputs } from "@/lib/models/validation"
+import {
+  MODEL_REGISTRY,
+  getModelsByGenerationType,
+  isValidModel,
+  resolveModel,
+  validateModelInputs,
+  type Model,
+  type GenerationType,
+  type ModelDefinition,
+} from "@runway-playground/shared"
 import type { Prompt, MediaItem, GeneratePayload, EditPayload } from "@/lib/types"
 
 import { PromptContext, type FileWithPreview } from "./context"
@@ -138,7 +144,7 @@ export default function PromptRoot({
   const outputs: MediaItem[] = useMemo(() => {
     if (!prompt?.media) return []
     return prompt.media.filter((m) => m.category === "output")
-  }, [prompt?.media])
+  }, [prompt])
 
   // Aspect ratio for dynamic card width (view / loading modes)
   const mediaAspectRatio = useMemo(() => {

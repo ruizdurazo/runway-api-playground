@@ -7,8 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select"
-import { getModelsByGenerationType } from "@/lib/models/registry"
-import type { Model } from "@/lib/models/registry"
+import { getModelsByGenerationType, type Model } from "@runway-playground/shared"
 import { usePromptContext } from "./context"
 
 import styles from "./prompt.module.scss"
