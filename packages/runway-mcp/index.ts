@@ -93,51 +93,8 @@ function getMcpServerHttpOrigin(): string {
   }
 }
 
-// Mount target must be `widget-root` — mcp-use generated entry.tsx uses getElementById("widget-root").
-server.uiResource({
-  type: "mcpApps",
-  name: "generation-result",
-  htmlTemplate: `
-    <!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Generation result</title>
-      </head>
-      <body>
-        <div id="widget-root"></div>
-        <script type="module" src="/resources/generation-result.js"></script>
-      </body>
-    </html>
-  `,
-  metadata: {
-    csp: {
-      connectDomains: [
-        "https://api.dev.runwayml.com",
-        "https://api.runwayml.com",
-        "https://storage.googleapis.com",
-        // Runway task artifacts (URLs vary by region / CDN pool)
-        "https://*.cloudfront.net",
-        "https://dnznrvs05pmza.cloudfront.net",
-      ],
-      resourceDomains: [
-        "https://api.dev.runwayml.com",
-        "https://api.runwayml.com",
-        "https://storage.googleapis.com",
-        "https://media.runwayml.com",
-        // Gemini / Gen models often serve images from *.cloudfront.net (not a single hostname)
-        "https://*.cloudfront.net",
-        // Some clients do not honor wildcard img-src for task artifacts
-        "https://dnznrvs05pmza.cloudfront.net",
-      ],
-    },
-    prefersBorder: true,
-    invoking: "Generating media…",
-    invoked: "Generation complete",
-    widgetDescription: "Preview Runway image or video output with open-in-browser.",
-  },
-})
+// Widget HTML and script tags come from `mcp-use build` → dist/resources/widgets/generation-result/index.html
+// (served under /mcp-use/widgets/...). Do not hand-roll `/resources/*.js` paths — they 404 in MCP Apps embeds.
 
 function inferMediaType(url: string): "image" | "video" {
   if (/\.(mp4|webm|mov)(\?|$)/i.test(url)) return "video"

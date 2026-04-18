@@ -20,6 +20,29 @@ export const widgetMetadata: WidgetMetadata = {
   description: "Shows Runway generation output with preview and open-in-browser.",
   props: propSchema,
   exposeAsTool: false,
+  metadata: {
+    csp: {
+      connectDomains: [
+        "https://api.dev.runwayml.com",
+        "https://api.runwayml.com",
+        "https://storage.googleapis.com",
+        "https://*.cloudfront.net",
+        "https://dnznrvs05pmza.cloudfront.net",
+      ],
+      resourceDomains: [
+        "https://api.dev.runwayml.com",
+        "https://api.runwayml.com",
+        "https://storage.googleapis.com",
+        "https://media.runwayml.com",
+        "https://*.cloudfront.net",
+        "https://dnznrvs05pmza.cloudfront.net",
+      ],
+    },
+    prefersBorder: true,
+    invoking: "Generating media…",
+    invoked: "Generation complete",
+    widgetDescription: "Preview Runway image or video output with open-in-browser.",
+  },
 }
 
 const cardStyle: React.CSSProperties = {
