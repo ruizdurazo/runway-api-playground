@@ -2,9 +2,12 @@ import RunwayML, { TaskFailedError } from "@runwayml/sdk"
 import {
   getModelById,
   getStrategy,
+  MODEL_ALIASES,
+  MODEL_REGISTRY,
   resolveModel,
   validateModelInputs,
   type Model,
+  type ModelDefinition,
 } from "@runway-playground/shared"
 import { MCPServer, text, widget } from "mcp-use/server"
 import { z } from "zod"
@@ -237,12 +240,130 @@ server.get("/__media-proxy", async (c) => {
   })
 })
 
+function formatAdditionalParamsForDocs(
+  params: NonNullable<ModelDefinition["additionalParams"]>,
+): string {
+  return Object.entries(params)
+    .map(([key, cfg]) => {
+      const bits: string[] = [`default ${JSON.stringify(cfg.default)}`]
+      if (cfg.options?.length) {
+        bits.push(`allowed: ${cfg.options.join(", ")}`)
+      }
+      if (cfg.min !== undefined || cfg.max !== undefined) {
+        bits.push(`min ${cfg.min ?? "—"} max ${cfg.max ?? "—"}`)
+      }
+      return `${key} (${bits.join("; ")})`
+    })
+    .join(". ")
+}
+
+function formatInputsForDocs(inputs: ModelDefinition["inputs"]): string {
+  switch (inputs.kind) {
+    case "none":
+      return "assets: none."
+    case "named": {
+      const slots = Object.entries(inputs.slots)
+        .map(([name, slot]) => {
+          const types = Array.isArray(slot.type)
+            ? slot.type.join(" | ")
+            : slot.type
+          return `${name}: ${types}, ${slot.minCount}–${slot.maxCount} asset(s) with tag "${name}"`
+        })
+        .join("; ")
+      return `assets: ${slots}.`
+    }
+    case "standard": {
+      const max =
+        inputs.maxCount === Infinity ? "unlimited" : String(inputs.maxCount)
+      let line = `assets: ${inputs.minCount}–${max} × ${inputs.type}`
+      if (inputs.additionalReferences) {
+        const ar = inputs.additionalReferences
+        line += `; optional ${ar.minCount}–${ar.maxCount} extra image(s) for references`
+      }
+      if (inputs.tagsAllowed) {
+        line += "; optional tag 3–16 chars per asset when refs used"
+      }
+      return `${line}.`
+    }
+    default:
+      return "assets: (see registry)."
+  }
+}
+
+function sortedModelIds(): Model[] {
+  return (Object.keys(MODEL_REGISTRY) as Model[]).slice().sort()
+}
+
+function buildGenerateMediaToolDescription(): string {
+  const aliasLine =
+    Object.keys(MODEL_ALIASES).length === 0
+      ? "Model aliases: none."
+      : `Model aliases (these ids resolve to the canonical registry key): ${(
+          Object.entries(MODEL_ALIASES) as [string, Model][]
+        )
+          .map(([alias, canonical]) => `${alias} → ${canonical}`)
+          .join(", ")}.`
+
+  const perModel = (Object.entries(MODEL_REGISTRY) as [Model, ModelDefinition][])
+    .slice()
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([id, def]) => {
+      const genTypes = def.generationTypes.join(", ")
+      const promptRule = def.prompt.required
+        ? "prompt required"
+        : def.prompt.maxLength
+          ? `prompt optional (max ${def.prompt.maxLength} chars when set)`
+          : "prompt optional"
+      const ratios =
+        def.ratios.length === 0
+          ? "ratios: none for this model (omit ratio)"
+          : `ratios: ${def.ratios.join(", ")} — omit ratio to use first listed`
+      const inputs = formatInputsForDocs(def.inputs)
+      const extras = def.additionalParams
+        ? `SDK defaults: ${formatAdditionalParamsForDocs(def.additionalParams)}`
+        : ""
+      return `• ${id} (${def.displayName}) — generationType: ${genTypes}; ${promptRule}; ${ratios}; ${inputs}${extras ? ` ${extras}` : ""}`
+    })
+    .join("\n")
+
+  return [
+    "Generate an image or video with the Runway API. Model ids, allowed generationType, ratios, and asset rules are defined in the shared MODEL_REGISTRY (listed below).",
+    "",
+    "Parameters:",
+    "- promptText: text prompt; required when the chosen model marks prompt as required.",
+    `- model: canonical id — ${sortedModelIds().join(", ")}`,
+    aliasLine,
+    '- generationType: "image" or "video"; must be one of the types that model supports.',
+    "- ratio: optional width:height string; must be one of that model's ratios when the model defines any; if omitted, the first ratio for that model is used.",
+    '- assets: optional { url, type?, tag? }[] — HTTPS urls; for act_two set tag to "character" or "reference" per slot; type inferred from URL extension when omitted.',
+    "",
+    "Per-model options:",
+    perModel,
+  ].join("\n")
+}
+
+const generateMediaToolDescription = buildGenerateMediaToolDescription()
+
+const generateMediaModelFieldDescription = [
+  `Canonical model id: ${sortedModelIds().join(", ")}.`,
+  Object.keys(MODEL_ALIASES).length
+    ? `Aliases: ${(Object.entries(MODEL_ALIASES) as [string, Model][])
+        .map(([a, c]) => `${a}→${c}`)
+        .join(", ")}.`
+    : "",
+  "Must match generationType and other constraints in the tool description.",
+]
+  .filter(Boolean)
+  .join(" ")
+
 const assetSchema = z.object({
   url: z.string().min(1).describe("HTTPS URL to an input image or video"),
   tag: z
     .string()
     .optional()
-    .describe('Slot tag when required (e.g. act_two: "character", "reference")'),
+    .describe(
+      'Optional slot tag: required for act_two assets — "character" or "reference". Optional 3–16 char tag on reference images when the model allows tags.',
+    ),
   type: z
     .enum(["image", "video"])
     .optional()
@@ -250,32 +371,35 @@ const assetSchema = z.object({
 })
 
 const generateMediaSchema = z.object({
-  promptText: z.string().describe("Prompt text for the generation"),
-  model: z
+  promptText: z
     .string()
     .describe(
-      "Model id (e.g. gen4_image_turbo, gen4_turbo, veo3, gen4_aleph, upscale_v1, act_two)",
+      "Text prompt; required for models that require a prompt (see tool description). Respects each model's max length when set.",
     ),
+  model: z.string().describe(generateMediaModelFieldDescription),
   generationType: z
     .enum(["image", "video"])
-    .describe("Whether to generate an image or a video"),
+    .describe(
+      'Must be "image" or "video" and must be allowed for the chosen model (each model lists supported generationType values in the tool description).',
+    ),
   ratio: z
     .string()
     .optional()
     .describe(
-      "Aspect ratio; when omitted, the first allowed ratio for the model is used",
+      "Aspect ratio W:H; must be one of the ratios listed for that model in the tool description when the model has ratios. When omitted, the first ratio for the model is used.",
     ),
   assets: z
     .array(assetSchema)
     .optional()
-    .describe("Reference images, source video, or other inputs as HTTPS URLs"),
+    .describe(
+      "Reference images, source video, or character/reference media as HTTPS URLs; min/max counts and tags depend on the model (see tool description).",
+    ),
 })
 
 server.tool(
   {
     name: "generate_media",
-    description:
-      "Generate an image or video with Runway.",
+    description: generateMediaToolDescription,
     schema: generateMediaSchema,
     widget: {
       name: "generation-result",
