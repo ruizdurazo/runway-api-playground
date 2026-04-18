@@ -1,12 +1,12 @@
-import type { EndpointType } from "../models/types"
-import type { GenerationStrategy } from "./types"
+import type { EndpointType } from "../models/types.js"
+import type { GenerationStrategy } from "./types.js"
 
-import { textToImageStrategy } from "./textToImage"
-import { imageToVideoStrategy } from "./imageToVideo"
-import { textToVideoStrategy } from "./textToVideo"
-import { videoToVideoStrategy } from "./videoToVideo"
-import { videoUpscaleStrategy } from "./videoUpscale"
-import { characterPerformanceStrategy } from "./characterPerformance"
+import { textToImageStrategy } from "./textToImage.js"
+import { imageToVideoStrategy } from "./imageToVideo.js"
+import { textToVideoStrategy } from "./textToVideo.js"
+import { videoToVideoStrategy } from "./videoToVideo.js"
+import { videoUpscaleStrategy } from "./videoUpscale.js"
+import { characterPerformanceStrategy } from "./characterPerformance.js"
 
 const STRATEGY_MAP: Record<EndpointType, GenerationStrategy> = {
   text_to_image: textToImageStrategy,
@@ -25,4 +25,4 @@ export function getStrategy(endpoint: EndpointType): GenerationStrategy {
   return strategy
 }
 
-export type { GenerationStrategy, GenerationResult, GenerationParams, Asset } from "./types"
+export type { GenerationStrategy, GenerationResult, GenerationParams, Asset } from "./types.js"

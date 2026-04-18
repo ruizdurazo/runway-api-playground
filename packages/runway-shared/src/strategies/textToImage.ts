@@ -1,4 +1,4 @@
-import type { GenerationStrategy, GenerationParams, GenerationResult } from "./types"
+import type { GenerationStrategy, GenerationParams, GenerationResult } from "./types.js"
 
 export const textToImageStrategy: GenerationStrategy = {
   async execute(params: GenerationParams): Promise<GenerationResult> {

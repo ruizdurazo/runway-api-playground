@@ -4,14 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "pnpm --filter @runway-playground/shared run build && next build",
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write .",
     "mcp:install": "npm install --prefix packages/runway-mcp",
     "mcp:dev": "npm run dev --prefix packages/runway-mcp",
     "mcp:build": "npm run build --prefix packages/runway-mcp",
-    "build:mcp": "pnpm --filter @runway-playground/mcp run build",
+    "build:mcp": "pnpm --filter @runway-playground/shared run build && pnpm --filter @runway-playground/mcp run build",
     "start:mcp": "pnpm --filter @runway-playground/mcp run start"
   },
   "dependencies": {

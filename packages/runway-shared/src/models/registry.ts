@@ -1,4 +1,4 @@
-import type { ModelDefinition, GenerationType } from "./types"
+import type { ModelDefinition, GenerationType } from "./types.js"
 
 // ---------------------------------------------------------------------------
 // Helper to type-check each model while preserving object key literals

@@ -25,9 +25,6 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ],
-      "@runway-playground/shared": [
-        "./packages/runway-shared/src/index.ts"
       ]
     }
   },

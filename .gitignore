@@ -44,3 +44,6 @@ next-env.d.ts
 # MCP server (mcp-use) build artifacts
 packages/runway-mcp/dist/
 packages/runway-mcp/.mcp-use/
+
+# Shared package build output (rebuilt by prepare / build:mcp)
+packages/runway-shared/dist/

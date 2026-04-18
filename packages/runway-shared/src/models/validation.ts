@@ -1,5 +1,5 @@
-import { MODEL_REGISTRY, resolveModel } from "./registry"
-import type { StandardInputConfig, NamedInputConfig } from "./types"
+import { MODEL_REGISTRY, resolveModel } from "./registry.js"
+import type { StandardInputConfig, NamedInputConfig } from "./types.js"
 
 export interface ValidationInput {
   type: "image" | "video"
