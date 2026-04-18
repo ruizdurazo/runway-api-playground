@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import RunwayML, { TaskFailedError } from "@runwayml/sdk"
 import {
@@ -16,6 +16,29 @@ import { MCPServer, text, widget } from "mcp-use/server"
 import { z } from "zod"
 
 /**
+ * mcp-use resolves `dist/` and `dist/mcp-use.json` via `process.cwd()` (see `getCwd()` in
+ * mcp-use). Manufact/Fly may start Node with cwd ≠ this package (e.g. monorepo root),
+ * so widget mount finds no files → no `ui://` resources registered, while we still set
+ * `server.buildId` from this file’s location → clients request a URI nothing serves.
+ */
+function resolveMcpPackagePaths(): { packageRoot: string; distDir: string } {
+  const entryDir = dirname(fileURLToPath(import.meta.url))
+  const distDir =
+    basename(entryDir) === "dist" ? entryDir : join(entryDir, "dist")
+  const packageRoot =
+    basename(entryDir) === "dist" ? join(entryDir, "..") : entryDir
+  return { packageRoot, distDir }
+}
+
+function ensureMcpPackageRootForWidgetPaths(): void {
+  try {
+    process.chdir(resolveMcpPackagePaths().packageRoot)
+  } catch {
+    /* ignore — cwd may be fixed by the host already */
+  }
+}
+
+/**
  * mcp-use registers tools before `listen()` mounts widgets. Tool widget metadata
  * uses `server.buildId` for `ui://widget/<name>-<buildId>.html`, while `mcp-use build`
  * writes the same id into `dist/mcp-use.json`. If `buildId` is unset until mount,
@@ -24,8 +47,7 @@ import { z } from "zod"
  */
 function readWidgetBuildIdFromMcpUseManifest(): string | undefined {
   try {
-    const dir = dirname(fileURLToPath(import.meta.url))
-    const manifestPath = join(dir, "mcp-use.json")
+    const manifestPath = join(resolveMcpPackagePaths().distDir, "mcp-use.json")
     if (!existsSync(manifestPath)) return undefined
     const parsed = JSON.parse(readFileSync(manifestPath, "utf8")) as {
       buildId?: unknown
@@ -35,6 +57,8 @@ function readWidgetBuildIdFromMcpUseManifest(): string | undefined {
     return undefined
   }
 }
+
+ensureMcpPackageRootForWidgetPaths()
 
 const server = new MCPServer({
   name: "runway-playground-mcp",
