@@ -100,6 +100,23 @@ function readWidgetBuildIdFromMcpUseManifest(): string | undefined {
 
 ensureMcpGetCwdSeesPackageDist()
 
+/**
+ * mcp-use only serves prebuilt widgets from `dist/resources/widgets` when
+ * `getEnv("NODE_ENV") === "production"` (see `mountWidgets` in mcp-use). Otherwise it
+ * uses the Vite dev path against `resources/`, which does not register the same
+ * `ui://widget/<name>-<buildId>.html` resources as `mcp-use build` — Manufact/Fly often
+ * leave NODE_ENV unset → tools list widget URIs from the manifest but `resources/read`
+ * returns "not found". Only force when running the compiled `dist/index.js` entry so
+ * `mcp-use dev` from `index.ts` is unaffected.
+ */
+const entryDirForProdHint = dirname(fileURLToPath(import.meta.url))
+if (
+  basename(entryDirForProdHint) === "dist" &&
+  distWidgetTreeExistsFrom(resolveMcpPackagePaths().distDir)
+) {
+  process.env.NODE_ENV = "production"
+}
+
 const server = new MCPServer({
   name: "runway-playground-mcp",
   title: "Runway API Playground",

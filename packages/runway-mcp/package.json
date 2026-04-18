@@ -9,7 +9,7 @@
     "build:shared": "tsc -p ../runway-shared/tsconfig.build.json",
     "build": "npm run build:shared && mcp-use build",
     "dev": "mcp-use dev",
-    "start": "npm run build && mcp-use start"
+    "start": "npm run build && NODE_ENV=production mcp-use start"
   },
   "dependencies": {
     "@runway-playground/shared": "file:../runway-shared",
