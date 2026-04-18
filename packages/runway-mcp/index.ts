@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import RunwayML, { TaskFailedError } from "@runwayml/sdk"
 import {
   getModelById,
@@ -11,6 +14,27 @@ import {
 } from "@runway-playground/shared"
 import { MCPServer, text, widget } from "mcp-use/server"
 import { z } from "zod"
+
+/**
+ * mcp-use registers tools before `listen()` mounts widgets. Tool widget metadata
+ * uses `server.buildId` for `ui://widget/<name>-<buildId>.html`, while `mcp-use build`
+ * writes the same id into `dist/mcp-use.json`. If `buildId` is unset until mount,
+ * clients (e.g. Manufact) can see `ui://widget/hello-ui.html` in tool _meta while
+ * the server only registered `ui://widget/hello-ui-<hash>.html` → resources/read 404.
+ */
+function readWidgetBuildIdFromMcpUseManifest(): string | undefined {
+  try {
+    const dir = dirname(fileURLToPath(import.meta.url))
+    const manifestPath = join(dir, "mcp-use.json")
+    if (!existsSync(manifestPath)) return undefined
+    const parsed = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+      buildId?: unknown
+    }
+    return typeof parsed.buildId === "string" ? parsed.buildId : undefined
+  } catch {
+    return undefined
+  }
+}
 
 const server = new MCPServer({
   name: "runway-playground-mcp",
@@ -34,6 +58,11 @@ const server = new MCPServer({
     },
   ],
 })
+
+const widgetBuildId = readWidgetBuildIdFromMcpUseManifest()
+if (widgetBuildId) {
+  server.buildId = widgetBuildId
+}
 
 /** Mirrors mcp-use `getServerBaseUrl` (MCPServer#getServerBaseUrl is not public in types). */
 function effectiveMcpPublicBaseUrl(): string {
