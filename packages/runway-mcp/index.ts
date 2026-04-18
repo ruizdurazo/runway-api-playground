@@ -275,7 +275,7 @@ server.tool(
   {
     name: "generate_media",
     description:
-      "Generate an image or video with the Runway API using the same models and validation as the Runway API Playground web app. Requires RUNWAY_API_KEY in the server environment.",
+      "Generate an image or video with Runway.",
     schema: generateMediaSchema,
     widget: {
       name: "generation-result",
