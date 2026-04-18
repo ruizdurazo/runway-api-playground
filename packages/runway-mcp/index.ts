@@ -353,6 +353,34 @@ const generateMediaSchema = z.object({
     ),
 })
 
+const helloUiSchema = z.object({
+  label: z
+    .string()
+    .optional()
+    .describe("Optional text shown inside the yellow panel."),
+})
+
+server.tool(
+  {
+    name: "hello_ui",
+    description:
+      "MCP Apps smoke test only: shows a yellow hello panel with a counter button (does not call Runway). Use to verify widget UI loads in Claude.",
+    schema: helloUiSchema,
+    widget: {
+      name: "hello-ui",
+      invoking: "Loading hello UI…",
+      invoked: "Hello UI ready",
+    },
+  },
+  async (input) =>
+    widget({
+      props: { label: input.label },
+      output: text(
+        "Hello UI widget attached. If MCP Apps embedding works, you should see a yellow panel above.",
+      ),
+    }),
+)
+
 server.tool(
   {
     name: "generate_media",
