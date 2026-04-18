@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs"
-import { basename, dirname, join } from "node:path"
+import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import RunwayML, { TaskFailedError } from "@runwayml/sdk"
 import {
@@ -30,11 +30,51 @@ function resolveMcpPackagePaths(): { packageRoot: string; distDir: string } {
   return { packageRoot, distDir }
 }
 
-function ensureMcpPackageRootForWidgetPaths(): void {
+function distWidgetTreeExistsFrom(distBase: string): boolean {
+  const manifestPath = join(distBase, "mcp-use.json")
+  if (!existsSync(manifestPath)) return false
   try {
-    process.chdir(resolveMcpPackagePaths().packageRoot)
+    const m = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+      widgets?: Record<string, unknown>
+    }
+    const first = m.widgets && Object.keys(m.widgets)[0]
+    if (!first) return false
+    return existsSync(join(distBase, "resources", "widgets", first, "index.html"))
   } catch {
-    /* ignore — cwd may be fixed by the host already */
+    return false
+  }
+}
+
+/**
+ * mcp-use uses `process.cwd()` for `dist/` (see `getCwd()`). `chdir()` can fail on some
+ * hosts (e.g. read-only cwd). If built widgets are not visible from cwd, force cwd
+ * reporting to the MCP package root so widget mount registers `ui://` resources.
+ */
+function ensureMcpGetCwdSeesPackageDist(): void {
+  const { packageRoot, distDir } = resolveMcpPackagePaths()
+  if (!distWidgetTreeExistsFrom(distDir)) return
+
+  const cwdMatchesPackage =
+    resolve(process.cwd()) === resolve(packageRoot)
+  const widgetsVisibleFromCwd = distWidgetTreeExistsFrom(join(process.cwd(), "dist"))
+
+  if (widgetsVisibleFromCwd && cwdMatchesPackage) return
+
+  try {
+    process.chdir(packageRoot)
+    if (distWidgetTreeExistsFrom(join(process.cwd(), "dist"))) return
+  } catch (err) {
+    console.error("[runway-mcp] process.chdir to MCP package root failed:", err)
+  }
+
+  if (!distWidgetTreeExistsFrom(join(process.cwd(), "dist"))) {
+    console.warn(
+      `[runway-mcp] Widget dist not visible from process.cwd()=${JSON.stringify(process.cwd())}; overriding process.cwd() to ${JSON.stringify(packageRoot)} so mcp-use can mount widgets.`,
+    )
+    Object.defineProperty(process, "cwd", {
+      value: () => packageRoot,
+      configurable: true,
+    })
   }
 }
 
@@ -58,7 +98,7 @@ function readWidgetBuildIdFromMcpUseManifest(): string | undefined {
   }
 }
 
-ensureMcpPackageRootForWidgetPaths()
+ensureMcpGetCwdSeesPackageDist()
 
 const server = new MCPServer({
   name: "runway-playground-mcp",
