@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "npm run build:shared && npm run typecheck && mcp-use build --no-typecheck",
     "dev": "mcp-use dev",
-    "start": "npm run build && NODE_ENV=production mcp-use start"
+    "start": "NODE_ENV=production mcp-use start"
   },
   "dependencies": {
     "@runway-playground/shared": "file:../runway-shared",
