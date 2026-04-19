@@ -48,8 +48,8 @@ export const widgetMetadata: WidgetMetadata = {
 const cardStyle: React.CSSProperties = {
   fontFamily: "system-ui, sans-serif",
   padding: "16px",
-  borderRadius: "12px",
-  border: "1px solid color-mix(in srgb, CanvasText 12%, transparent)",
+  // borderRadius: "12px",
+  // border: "1px solid color-mix(in srgb, CanvasText 12%, transparent)",
   maxWidth: "100%",
 }
 
@@ -68,6 +68,34 @@ const buttonStyle: React.CSSProperties = {
   background: "Canvas",
   cursor: "pointer",
   fontSize: "14px",
+}
+
+async function copyTextToClipboard(value: string): Promise<boolean> {
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value)
+      return true
+    }
+  } catch {
+    /* fall back below */
+  }
+
+  if (typeof document === "undefined") return false
+
+  try {
+    const textarea = document.createElement("textarea")
+    textarea.value = value
+    textarea.setAttribute("readonly", "")
+    textarea.style.position = "absolute"
+    textarea.style.left = "-9999px"
+    document.body.appendChild(textarea)
+    textarea.select()
+    const copied = document.execCommand("copy")
+    document.body.removeChild(textarea)
+    return copied
+  } catch {
+    return false
+  }
 }
 
 type McpHttpOriginSource =
@@ -169,6 +197,7 @@ const GenerationResult: React.FC = () => {
   const { props, isPending, mcp_url: mcpBaseUrl } = useWidget<GenerationResultProps>()
   const [previewFailed, setPreviewFailed] = useState(false)
   const [clientBlobSrc, setClientBlobSrc] = useState<string | null>(null)
+  const [copyState, setCopyState] = useState<"idle" | "success" | "error">("idle")
   const blobRef = useRef<string | null>(null)
 
   /** When server omits `previewDataUrl` (size / wire limits), fetch artifact with `connect-src` then show via blob URL. */
@@ -215,6 +244,10 @@ const GenerationResult: React.FC = () => {
     setPreviewFailed(false)
   }, [props?.url])
 
+  useEffect(() => {
+    setCopyState("idle")
+  }, [props?.url])
+
   if (isPending) {
     return (
       <McpUseProvider autoSize>
@@ -243,6 +276,11 @@ const GenerationResult: React.FC = () => {
     mediaType === "image"
       ? previewDataUrl || clientBlobSrc || buildProxiedMediaSrc(url, mcpBaseUrl || "", props.mcpHttpOrigin)
       : buildProxiedMediaSrc(url, mcpBaseUrl || "", props.mcpHttpOrigin)
+
+  const handleCopyUrl = async () => {
+    const copied = await copyTextToClipboard(url)
+    setCopyState(copied ? "success" : "error")
+  }
 
   return (
     <McpUseProvider autoSize>
@@ -295,14 +333,22 @@ const GenerationResult: React.FC = () => {
           </p>
         ) : null}
 
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ ...buttonStyle, display: "inline-block", textDecoration: "none", color: "inherit" }}
-        >
-          Open in browser
-        </a>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <a
+            href={url}
+            rel="noreferrer"
+            style={{ ...buttonStyle, display: "inline-block", textDecoration: "none", color: "inherit" }}
+          >
+            Open asset
+          </a>
+          <button type="button" onClick={handleCopyUrl} style={buttonStyle}>
+            {copyState === "success"
+              ? "Copied URL"
+              : copyState === "error"
+                ? "Copy failed"
+                : "Copy asset URL"}
+          </button>
+        </div>
       </div>
     </McpUseProvider>
   )

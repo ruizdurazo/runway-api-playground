@@ -23,8 +23,8 @@ const box: React.CSSProperties = {
   padding: 20,
   fontFamily: "system-ui, sans-serif",
   background: "#fff7d6",
-  border: "2px solid #e6a800",
-  borderRadius: 12,
+  // border: "2px solid #e6a800",
+  // borderRadius: 12,
   maxWidth: "100%",
 }
 
