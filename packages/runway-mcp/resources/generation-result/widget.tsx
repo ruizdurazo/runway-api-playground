@@ -199,6 +199,7 @@ const GenerationResult: React.FC = () => {
   const [clientBlobSrc, setClientBlobSrc] = useState<string | null>(null)
   const [copyState, setCopyState] = useState<"idle" | "success" | "error">("idle")
   const blobRef = useRef<string | null>(null)
+  const copyResetTimeoutRef = useRef<number | null>(null)
 
   /** When server omits `previewDataUrl` (size / wire limits), fetch artifact with `connect-src` then show via blob URL. */
   useEffect(() => {
@@ -248,6 +249,14 @@ const GenerationResult: React.FC = () => {
     setCopyState("idle")
   }, [props?.url])
 
+  useEffect(() => {
+    return () => {
+      if (copyResetTimeoutRef.current !== null) {
+        window.clearTimeout(copyResetTimeoutRef.current)
+      }
+    }
+  }, [])
+
   if (isPending) {
     return (
       <McpUseProvider autoSize>
@@ -278,8 +287,20 @@ const GenerationResult: React.FC = () => {
       : buildProxiedMediaSrc(url, mcpBaseUrl || "", props.mcpHttpOrigin)
 
   const handleCopyUrl = async () => {
+    if (copyResetTimeoutRef.current !== null) {
+      window.clearTimeout(copyResetTimeoutRef.current)
+      copyResetTimeoutRef.current = null
+    }
+
     const copied = await copyTextToClipboard(url)
     setCopyState(copied ? "success" : "error")
+
+    if (copied) {
+      copyResetTimeoutRef.current = window.setTimeout(() => {
+        setCopyState("idle")
+        copyResetTimeoutRef.current = null
+      }, 3000)
+    }
   }
 
   return (
@@ -334,16 +355,9 @@ const GenerationResult: React.FC = () => {
         ) : null}
 
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          <a
-            href={url}
-            rel="noreferrer"
-            style={{ ...buttonStyle, display: "inline-block", textDecoration: "none", color: "inherit" }}
-          >
-            Open asset
-          </a>
           <button type="button" onClick={handleCopyUrl} style={buttonStyle}>
             {copyState === "success"
-              ? "Copied URL"
+              ? `Copied: ${url}`
               : copyState === "error"
                 ? "Copy failed"
                 : "Copy asset URL"}
