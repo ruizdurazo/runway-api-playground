@@ -22,8 +22,8 @@ It's a simple web app that allows users to create and edit prompts that will gen
 
 1. Clone the repository
 2. Set up the Supabase project and database tables as described in the Supabase Setup sections below
-3. Run `pnpm install`
-4. Run `pnpm dev`
+3. Run `npm install`
+4. Run `npm run dev`
 5. Open `http://localhost:3000` in your browser
 6. Add your Runway API key in the settings page
 7. You can now start creating and editing prompts

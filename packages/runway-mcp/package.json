@@ -7,9 +7,10 @@
   "main": "dist/index.js",
   "scripts": {
     "build:shared": "tsc -p ../runway-shared/tsconfig.build.json",
-    "build": "pnpm run build:shared && mcp-use build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "npm run build:shared && npm run typecheck && mcp-use build --no-typecheck",
     "dev": "mcp-use dev",
-    "start": "pnpm run build && NODE_ENV=production mcp-use start"
+    "start": "npm run build && NODE_ENV=production mcp-use start"
   },
   "dependencies": {
     "@runway-playground/shared": "file:../runway-shared",
@@ -21,11 +22,14 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5.0.4",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^8.0.8"
   }
 }

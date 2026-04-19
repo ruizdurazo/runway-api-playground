@@ -31,10 +31,6 @@ Styling:
 - Use SCSS for components and styling.
 - Never use Tailwind CSS.
 
-Dependencies Management:
-
-- Use `pnpm` for package management. Never use `npm` or `yarn`.
-
 Dependencies:
 
 - @radix-ui/react-dropdown-menu
