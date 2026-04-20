@@ -124,16 +124,26 @@ export default function DashboardClient() {
   }, [chats])
 
   useEffect(() => {
-    let channel: RealtimeChannel | undefined
-    ;(async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
-      channel = supabase.channel("chats-realtime")
-      console.log("Setting up real-time subscription for user:", user.id)
-      channel
-        .on(
+    let cancelled = false
+    const channelRef: { current: RealtimeChannel | null } = { current: null }
+
+    void (async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!user || cancelled) return
+
+        const ch = supabase.channel("chats-realtime")
+        if (cancelled) {
+          await supabase.removeChannel(ch)
+          return
+        }
+
+        channelRef.current = ch
+        console.log("Setting up real-time subscription for user:", user.id)
+
+        ch.on(
           "postgres_changes",
           {
             event: "INSERT",
@@ -142,6 +152,7 @@ export default function DashboardClient() {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
+            if (cancelled) return
             console.log("INSERT CHAT", payload)
             console.log("INSERT CHAT new:", payload.new)
             console.log("Payload keys:", Object.keys(payload))
@@ -164,58 +175,77 @@ export default function DashboardClient() {
             }
           },
         )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "chats",
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            console.log("UPDATE CHAT", payload)
-            console.log("UPDATE CHAT new:", payload.new)
-            console.log("Payload keys:", Object.keys(payload))
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "chats",
+              filter: `user_id=eq.${user.id}`,
+            },
+            (payload) => {
+              if (cancelled) return
+              console.log("UPDATE CHAT", payload)
+              console.log("UPDATE CHAT new:", payload.new)
+              console.log("Payload keys:", Object.keys(payload))
 
-            if (payload.new && payload.new.id && payload.new.updated_at) {
-              setChats((prev) => {
-                const updatedChat = { ...payload.new } as Chat
-                const updatedChats = prev
-                  .map((c) =>
-                    c.id === updatedChat.id ? { ...updatedChat } : c,
-                  )
-                  .sort(
-                    (a, b) =>
-                      new Date(b.updated_at).getTime() -
-                      new Date(a.updated_at).getTime(),
-                  )
-                console.log("Chat updated:", updatedChat.id)
-                return updatedChats
-              })
-              console.log("UI updated with updated chat")
-            } else {
-              console.error("Invalid payload structure for UPDATE:", payload)
-            }
-          },
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "DELETE",
-            schema: "public",
-            table: "chats",
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            console.log("DELETE CHAT", payload)
-            console.log("DELETE CHAT old:", payload.old)
-            setChats((prev) => prev.filter((c) => c.id !== payload.old.id))
-          },
-        )
-        .subscribe((status) => {
-          console.log("Subscription status:", status)
-        })
+              if (payload.new && payload.new.id && payload.new.updated_at) {
+                setChats((prev) => {
+                  const updatedChat = { ...payload.new } as Chat
+                  const updatedChats = prev
+                    .map((c) =>
+                      c.id === updatedChat.id ? { ...updatedChat } : c,
+                    )
+                    .sort(
+                      (a, b) =>
+                        new Date(b.updated_at).getTime() -
+                        new Date(a.updated_at).getTime(),
+                    )
+                  console.log("Chat updated:", updatedChat.id)
+                  return updatedChats
+                })
+                console.log("UI updated with updated chat")
+              } else {
+                console.error("Invalid payload structure for UPDATE:", payload)
+              }
+            },
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "DELETE",
+              schema: "public",
+              table: "chats",
+              filter: `user_id=eq.${user.id}`,
+            },
+            (payload) => {
+              if (cancelled) return
+              console.log("DELETE CHAT", payload)
+              console.log("DELETE CHAT old:", payload.old)
+              setChats((prev) => prev.filter((c) => c.id !== payload.old.id))
+            },
+          )
+          .subscribe((status) => {
+            console.log("Subscription status:", status)
+          })
+
+        if (cancelled && channelRef.current === ch) {
+          channelRef.current = null
+          await supabase.removeChannel(ch)
+        }
+      } catch (err) {
+        console.error("Realtime chats subscription error:", err)
+      }
     })()
+
+    return () => {
+      cancelled = true
+      const ch = channelRef.current
+      channelRef.current = null
+      if (ch) {
+        void supabase.removeChannel(ch)
+      }
+    }
   }, [])
 
   const createNewChat = async () => {
@@ -330,6 +360,7 @@ export default function DashboardClient() {
                         return <div className={styles.loadingPreview} />
                       } else if (details?.url != null && details.type != null) {
                         return details.type === "image" ? (
+                          // eslint-disable-next-line
                           <img
                             src={details.url}
                             alt=""

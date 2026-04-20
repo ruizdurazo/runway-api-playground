@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import Link from "next/link"
+// import Image from "next/image"
 import { Button } from "@/components/ui/Button"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
@@ -80,16 +81,25 @@ export default function GalleryClient() {
   }, [])
 
   useEffect(() => {
-    let channel: RealtimeChannel | undefined
-    ;(async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+    let cancelled = false
+    const channelRef: { current: RealtimeChannel | null } = { current: null }
 
-      channel = supabase.channel("media-realtime")
-      channel
-        .on(
+    void (async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        if (!user || cancelled) return
+
+        const ch = supabase.channel("media-realtime")
+        if (cancelled) {
+          await supabase.removeChannel(ch)
+          return
+        }
+
+        channelRef.current = ch
+
+        ch.on(
           "postgres_changes",
           {
             event: "INSERT",
@@ -98,15 +108,18 @@ export default function GalleryClient() {
             filter: `user_id=eq.${user.id}`,
           },
           async (payload) => {
+            if (cancelled) return
             if (payload.new.category !== "output") return
             const { data: chatData } = await supabase
               .from("prompts")
               .select("chat_id, ratio")
               .eq("id", payload.new.prompt_id)
               .single()
+            if (cancelled) return
             const { data: signedData } = await supabase.storage
               .from("media")
               .createSignedUrl(payload.new.path, 3600)
+            if (cancelled) return
             const newItem: GalleryMediaItem = {
               id: payload.new.id,
               path: payload.new.path,
@@ -119,8 +132,7 @@ export default function GalleryClient() {
             }
             setMedia((prev) => [newItem, ...prev])
           },
-        )
-        .on(
+        ).on(
           "postgres_changes",
           {
             event: "DELETE",
@@ -129,19 +141,32 @@ export default function GalleryClient() {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
+            if (cancelled) return
             const mediaId = payload.old?.id
             if (mediaId) {
               setMedia((prev) => prev.filter((m) => m.id !== mediaId))
             } else {
-              fetchMedia()
+              void fetchMedia()
             }
           },
-        )
-        .subscribe()
+        ).subscribe()
+
+        if (cancelled && channelRef.current === ch) {
+          channelRef.current = null
+          await supabase.removeChannel(ch)
+        }
+      } catch (err) {
+        console.error("Realtime gallery subscription error:", err)
+      }
     })()
 
     return () => {
-      channel?.unsubscribe()
+      cancelled = true
+      const ch = channelRef.current
+      channelRef.current = null
+      if (ch) {
+        void supabase.removeChannel(ch)
+      }
     }
   }, [])
 
@@ -159,7 +184,9 @@ export default function GalleryClient() {
           {media.map((item) => (
             <div key={item.id} className={styles.mediaItem}>
               {item.type === "image" ? (
+                // eslint-disable-next-line
                 <img src={item.url} alt="" className={styles.mediaImage} />
+                // <Image src={item.url} alt="" className={styles.mediaImage} />
               ) : (
                 <video
                   src={item.url}

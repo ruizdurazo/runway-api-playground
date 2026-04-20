@@ -317,6 +317,7 @@ const GenerationResult: React.FC = () => {
         </div>
 
         {mediaType === "image" && !previewFailed ? (
+          // eslint-disable-next-line
           <img
             src={mediaSrc}
             alt="Generated"
@@ -357,7 +358,7 @@ const GenerationResult: React.FC = () => {
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <button type="button" onClick={handleCopyUrl} style={buttonStyle}>
             {copyState === "success"
-              ? `Copied: ${url}`
+              ? `Copied URL`
               : copyState === "error"
                 ? "Copy failed"
                 : "Copy asset URL"}
