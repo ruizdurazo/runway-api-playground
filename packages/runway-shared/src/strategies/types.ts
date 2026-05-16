@@ -3,6 +3,7 @@ import type RunwayML from "@runwayml/sdk"
 export interface Asset {
   url: string
   tag: string
+  position?: "first" | "last"
 }
 
 export interface GenerationParams {

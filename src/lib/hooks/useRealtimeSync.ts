@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { getMediaViewUrl } from "@/lib/media-view-url"
 import { supabase } from "@/lib/supabase"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 import type { Prompt, MediaItem } from "@/lib/types"
@@ -75,9 +76,6 @@ export function useRealtimeSync({
               const promptId = payload.new.prompt_id
               if (!promptIdsRef.current.has(promptId)) return
 
-              const { data } = await supabase.storage
-                .from("media")
-                .createSignedUrl(payload.new.path, 3600)
               if (cancelled) return
 
               const newMedia: MediaItem = {
@@ -86,7 +84,7 @@ export function useRealtimeSync({
                 type: payload.new.type,
                 category: payload.new.category,
                 tag: payload.new.tag,
-                url: data?.signedUrl ?? "",
+                url: getMediaViewUrl(payload.new.path),
               }
 
               setPrompts((prev) =>

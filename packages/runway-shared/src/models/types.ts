@@ -81,6 +81,13 @@ export interface ModelDefinition {
     maxLength?: number
   }
   inputs: InputConfig
+  /** When set, text-only flows (`textOnlyEndpoint`) restrict ratio to this subset. */
+  textOnlyRatios?: readonly string[]
   ratios: readonly string[]
   additionalParams?: Record<string, ParamOption>
+  /**
+   * When true (with `inputs.positionsRequired`), inputs may use `last` for a final
+   * keyframe as well as `first`. Models that only support a single first frame omit this.
+   */
+  supportsLastFrame?: boolean
 }

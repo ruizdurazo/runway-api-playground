@@ -11,8 +11,16 @@ interface PromptTextInputProps {
 }
 
 export default function PromptTextInput({ placeholder }: PromptTextInputProps) {
-  const { mode, model, text, setText, addFiles, setShowReferences, maxInputCount, currentInputCount } =
-    usePromptContext()
+  const {
+    mode,
+    model,
+    modelConfig,
+    text,
+    setText,
+    addFiles,
+    maxInputCount,
+    currentInputCount,
+  } = usePromptContext()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const isHidden =
@@ -33,6 +41,8 @@ export default function PromptTextInput({ placeholder }: PromptTextInputProps) {
 
   if (isHidden) return null
 
+  const promptMaxLength = modelConfig.prompt.maxLength ?? 1000
+
   const handleInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
     resize(e.currentTarget)
   }
@@ -40,9 +50,8 @@ export default function PromptTextInput({ placeholder }: PromptTextInputProps) {
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData.items
     const pastedFiles: File[] = []
-    let available = maxInputCount === Infinity
-      ? Infinity
-      : maxInputCount - currentInputCount
+    let available =
+      maxInputCount === Infinity ? Infinity : maxInputCount - currentInputCount
 
     for (const item of items) {
       if (available <= 0) break
@@ -56,7 +65,6 @@ export default function PromptTextInput({ placeholder }: PromptTextInputProps) {
     }
 
     if (pastedFiles.length > 0) {
-      setShowReferences(true)
       addFiles(pastedFiles)
     }
   }
@@ -67,12 +75,13 @@ export default function PromptTextInput({ placeholder }: PromptTextInputProps) {
       className={styles.textInput}
       value={text}
       name="prompt"
-      maxLength={1000}
+      maxLength={promptMaxLength}
       onChange={(e) => setText(e.target.value)}
       onInput={handleInput}
       onPaste={handlePaste}
       placeholder={
-        placeholder ?? (mode === "edit" ? "Edit your prompt..." : "Enter your prompt...")
+        placeholder ??
+        (mode === "edit" ? "Edit your prompt..." : "Enter your prompt...")
       }
     />
   )

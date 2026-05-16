@@ -11,6 +11,8 @@ export interface MediaItem {
   type: "image" | "video"
   category: "input" | "output"
   tag: string | null
+  /** Keyframe role for image-to-video models (`first` / `last`). */
+  position?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -53,6 +55,8 @@ export interface GeneratePayload {
   generationType: GenerationType
   filesWithTags: FileWithTag[]
   ratio: string
+  /** Partial overrides for registry defaults (e.g. `duration`, `audio`). */
+  additionalParams?: Record<string, unknown>
 }
 
 export interface EditPayload {
@@ -62,4 +66,5 @@ export interface EditPayload {
   existingMedia: ExistingMediaRef[]
   newFilesWithTags: FileWithTag[]
   ratio: string
+  additionalParams?: Record<string, unknown>
 }

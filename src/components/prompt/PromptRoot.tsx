@@ -1,12 +1,21 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+  type SubmitEvent,
+} from "react"
 import { toast } from "sonner"
 
 import {
   MODEL_REGISTRY,
   getModelsByGenerationType,
+  getModelById,
   isValidModel,
+  mergeAdditionalParams,
   resolveModel,
   validateModelInputs,
   type Model,
@@ -36,7 +45,11 @@ interface PromptRootProps {
   /** Called to delete a prompt. */
   onDelete?: (promptId: string) => Promise<void>
   /** Called to regenerate from an existing prompt. */
-  onRegenerate?: (promptId: string, freshPrompt?: Prompt) => Promise<void>
+  onRegenerate?: (
+    promptId: string,
+    freshPrompt?: Prompt,
+    generateOptions?: { additionalParams?: Record<string, unknown> },
+  ) => Promise<void>
   children: React.ReactNode
 }
 
@@ -94,7 +107,9 @@ export default function PromptRoot({
   const [ratio, setRatio] = useState(
     prompt?.ratio ?? MODEL_REGISTRY[initials.model]?.ratios[0] ?? "1280:720",
   )
-  const [showReferences, setShowReferences] = useState(false)
+  const [generationOptions, setGenerationOptions] = useState<
+    Record<string, unknown>
+  >({})
   const cardRef = useRef<HTMLDivElement>(null)
 
   const scrollCardIntoView = useCallback(() => {
@@ -191,6 +206,11 @@ export default function PromptRoot({
       setModelRaw(validModels[0]?.id ?? "gen4_turbo")
     }
   }, [generationType, model])
+
+  // Reset generation overrides when model changes
+  useEffect(() => {
+    setGenerationOptions({})
+  }, [model])
 
   // Keep ratio in sync when model changes
   useEffect(() => {
@@ -296,10 +316,36 @@ export default function PromptRoot({
     [],
   )
 
+  const updatePosition = useCallback(
+    (index: number, position: "first" | "last" | null, isExisting: boolean) => {
+      if (isExisting) {
+        setExistingMedia((prev) => {
+          const list = [...prev]
+          list[index] = { ...list[index], position }
+          return list
+        })
+      } else {
+        setNewFiles((prev) => {
+          const list = [...prev]
+          list[index] = { ...list[index], position }
+          return list
+        })
+      }
+    },
+    [],
+  )
+
   // ---- Submit handler ------------------------------------------------------
   const onSubmit = useCallback(
-    async (e: React.FormEvent) => {
+    async (e: SubmitEvent<HTMLFormElement>) => {
       e.preventDefault()
+
+      const mergedForValidate = mergeAdditionalParams(model, generationOptions)
+      const willHaveFileInputs =
+        existingMedia.length + newFiles.length > 0
+      const usingTextOnly =
+        !willHaveFileInputs &&
+        Boolean(getModelById(model).textOnlyEndpoint)
 
       try {
         validateModelInputs(
@@ -321,6 +367,8 @@ export default function PromptRoot({
             })),
           ],
           ratio,
+          mergedForValidate,
+          { usingTextOnlyEndpoint: usingTextOnly },
         )
       } catch (err) {
         toast.error((err as Error).message)
@@ -345,6 +393,7 @@ export default function PromptRoot({
             position,
           })),
           ratio,
+          additionalParams: generationOptions,
         }
         setText("")
         setNewFiles([])
@@ -378,8 +427,11 @@ export default function PromptRoot({
               position,
             })),
             ratio,
+            additionalParams: generationOptions,
           })
-          await onRegenerate(prompt.id, updatedPrompt)
+          await onRegenerate(prompt.id, updatedPrompt, {
+            additionalParams: generationOptions,
+          })
           setMode("view")
         } catch (err) {
           toast.error((err as Error).message)
@@ -398,6 +450,7 @@ export default function PromptRoot({
       maxInputCount,
       modelConfig.displayName,
       isExisting,
+      generationOptions,
       onGenerate,
       onEdit,
       onRegenerate,
@@ -424,10 +477,11 @@ export default function PromptRoot({
     removeNewFile,
     removeExistingMedia,
     updateTag,
+    updatePosition,
     ratio,
     setRatio,
-    showReferences,
-    setShowReferences,
+    generationOptions,
+    setGenerationOptions,
     maxInputCount,
     currentInputCount,
     prompt,

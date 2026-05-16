@@ -7,7 +7,11 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { getModelDisplayName } from "@runway-playground/shared"
+import {
+  canonicalUsageModelId,
+  getModelDisplayName,
+  isVisualGenerationModelForUsage,
+} from "@runway-playground/shared"
 
 import styles from "./page.module.scss"
 import {
@@ -89,16 +93,38 @@ export default function SettingsClient() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
-  const isSupportedModel = (model: string) => !model.startsWith("eleven_")
-
   const filteredUsageData = useMemo(() => {
     if (!usageData) return null
+    const canonicalSet = new Set<string>()
+    for (const m of usageData.models) {
+      if (isVisualGenerationModelForUsage(m)) {
+        canonicalSet.add(canonicalUsageModelId(m))
+      }
+    }
+    for (const r of usageData.results) {
+      for (const { model } of r.usedCredits) {
+        if (isVisualGenerationModelForUsage(model)) {
+          canonicalSet.add(canonicalUsageModelId(model))
+        }
+      }
+    }
     return {
-      models: usageData.models.filter(isSupportedModel),
-      results: usageData.results.map((r) => ({
-        ...r,
-        usedCredits: r.usedCredits.filter((c) => isSupportedModel(c.model)),
-      })),
+      models: Array.from(canonicalSet).sort(),
+      results: usageData.results.map((r) => {
+        const byCanonical: Record<string, number> = {}
+        for (const { model, amount } of r.usedCredits) {
+          if (!isVisualGenerationModelForUsage(model)) continue
+          const c = canonicalUsageModelId(model)
+          byCanonical[c] = (byCanonical[c] ?? 0) + amount
+        }
+        return {
+          ...r,
+          usedCredits: Object.entries(byCanonical).map(([model, amount]) => ({
+            model,
+            amount,
+          })),
+        }
+      }),
     }
   }, [usageData])
 
@@ -124,6 +150,29 @@ export default function SettingsClient() {
         new Date(b.date as string).getTime(),
     )
   }, [filteredUsageData])
+
+  const dailyUsageLimitRows = useMemo(() => {
+    if (!organizationData) return []
+    const visual = new Set(
+      [
+        ...Object.keys(organizationData.usage.models),
+        ...Object.keys(organizationData.tier.models),
+      ].filter(isVisualGenerationModelForUsage),
+    )
+    const merged = new Map<string, { usedToday: number; maxDaily: number }>()
+    for (const model of visual) {
+      const canon = canonicalUsageModelId(model)
+      const row = merged.get(canon) ?? { usedToday: 0, maxDaily: 0 }
+      row.usedToday +=
+        organizationData.usage.models[model]?.dailyGenerations ?? 0
+      const cap = organizationData.tier.models[model]?.maxDailyGenerations ?? 0
+      if (cap > 0) {
+        row.maxDaily = Math.max(row.maxDaily, cap)
+      }
+      merged.set(canon, row)
+    }
+    return Array.from(merged.entries()).sort(([a], [b]) => a.localeCompare(b))
+  }, [organizationData])
 
   const fetchUser = async () => {
     const {
@@ -326,25 +375,13 @@ export default function SettingsClient() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.keys(organizationData.usage.models)
-                    .filter(isSupportedModel)
-                    .sort()
-                    .map((model) => (
-                      <tr key={model}>
-                        <td>{getModelDisplayName(model)}</td>
-                        <td>
-                          {organizationData.tier.models[model]
-                            ?.maxDailyGenerations > 0
-                            ? organizationData.tier.models[model]
-                                .maxDailyGenerations
-                            : "Unlimited"}
-                        </td>
-                        <td>
-                          {organizationData.usage.models[model]
-                            ?.dailyGenerations ?? 0}
-                        </td>
-                      </tr>
-                    ))}
+                  {dailyUsageLimitRows.map(([canon, { maxDaily, usedToday }]) => (
+                    <tr key={canon}>
+                      <td>{getModelDisplayName(canon)}</td>
+                      <td>{maxDaily > 0 ? maxDaily : "Unlimited"}</td>
+                      <td>{usedToday}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             ) : (

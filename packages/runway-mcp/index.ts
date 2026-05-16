@@ -5,6 +5,7 @@ import RunwayML, { TaskFailedError } from "@runwayml/sdk"
 import {
   getModelById,
   getStrategy,
+  mergeAdditionalParams,
   MODEL_ALIASES,
   MODEL_REGISTRY,
   resolveModel,
@@ -435,6 +436,12 @@ const assetSchema = z.object({
     .enum(["image", "video"])
     .optional()
     .describe("Input media type; inferred from the URL when omitted"),
+  position: z
+    .enum(["first", "last"])
+    .optional()
+    .describe(
+      'Keyframe role for image-to-video models: "first" / "last" when the model supports last frames.',
+    ),
 })
 
 const generateMediaSchema = z.object({
@@ -460,6 +467,12 @@ const generateMediaSchema = z.object({
     .optional()
     .describe(
       "Reference images, source video, or character/reference media as HTTPS URLs; min/max counts and tags depend on the model (see tool description).",
+    ),
+  additionalParams: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe(
+      "Optional overrides for model defaults (e.g. duration seconds, audio boolean for Veo 3.1).",
     ),
 })
 
@@ -530,8 +543,19 @@ server.tool(
       type: (a.type ?? inferMediaType(a.url)) as "image" | "video",
       url: a.url,
       tag: a.tag ?? null,
-      ...(positionsRequired ? { position: "first" as const } : {}),
+      ...(positionsRequired
+        ? { position: (a.position ?? "first") as "first" | "last" }
+        : {}),
     }))
+
+    const hasAssets = (input.assets?.length ?? 0) > 0
+    const usingTextOnlyEndpoint =
+      !hasAssets && Boolean(modelDef.textOnlyEndpoint)
+
+    const mergedAdditional = mergeAdditionalParams(
+      model,
+      input.additionalParams ?? null,
+    )
 
     validateModelInputs(
       model,
@@ -539,11 +563,12 @@ server.tool(
       input.promptText,
       inputs,
       effectiveRatio,
+      mergedAdditional,
+      { usingTextOnlyEndpoint },
     )
 
-    const hasAssets = (input.assets?.length ?? 0) > 0
     const endpoint =
-      !hasAssets && modelDef.textOnlyEndpoint
+      usingTextOnlyEndpoint && modelDef.textOnlyEndpoint
         ? modelDef.textOnlyEndpoint
         : modelDef.endpoint
 
@@ -551,6 +576,7 @@ server.tool(
     const strategyAssets = (input.assets ?? []).map((a) => ({
       url: a.url,
       tag: a.tag ?? "",
+      ...(a.position ? { position: a.position } : {}),
     }))
 
     try {
@@ -561,14 +587,7 @@ server.tool(
         promptText: input.promptText,
         assets: strategyAssets,
         ratio: effectiveRatio,
-        additionalParams: modelDef.additionalParams
-          ? Object.fromEntries(
-              Object.entries(modelDef.additionalParams).map(([k, v]) => [
-                k,
-                v.default,
-              ]),
-            )
-          : undefined,
+        additionalParams: mergedAdditional,
       })
 
       const ratioLabel = effectiveRatio || "(n/a)"

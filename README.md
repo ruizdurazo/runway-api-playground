@@ -21,16 +21,29 @@ It's a simple web app that allows users to create and edit prompts that will gen
 ## Local Development
 
 1. Clone the repository
-2. Set up the Supabase project and database tables as described in the Supabase Setup sections below
+2. Set up Supabase using either [Local Supabase](#local-supabase-docker) (recommended for development) or a hosted project as described in [Supabase Setup](#supabase-setup) and [Supabase Database Setup](#supabase-database-setup)
 3. Run `npm install`
 4. Run `npm run dev`
 5. Open `http://localhost:3000` in your browser
 6. Add your Runway API key in the settings page
 7. You can now start creating and editing prompts
 
+## Local Supabase (Docker)
+
+You can run Postgres, Auth, Storage, Realtime, and Studio locally with the [Supabase CLI](https://supabase.com/docs/guides/cli/getting-started) and Docker.
+
+1. Install Docker Desktop and the Supabase CLI (`brew install supabase/tap/supabase` on macOS).
+2. From the repo root, run `npm run supabase:start` (or `supabase start`). The first run downloads images and applies migrations under `supabase/migrations/`.
+3. Copy **Project URL** and **Publishable** (anon) key from the CLI output, or run `npm run supabase:status`.
+4. Put them in `.env.local` as `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (see `.env.local.example`).
+
+This project uses non-default ports (`55421` API, `55422` database, `55423` Studio, and related ports in `supabase/config.toml`) so it can run alongside another local Supabase stack that uses the default `5432x` ports. If a port is still in use, change the values in `supabase/config.toml` and run `npm run supabase:stop` then `npm run supabase:start` again.
+
+Useful commands: `npm run supabase:stop`, `npm run supabase:reset` (reapply migrations and `supabase/seed.sql`), `npm run supabase:status`.
+
 ## Supabase Setup
 
-After creating a new Supabase project, you need to add the following environment variables to your `.env.local` file:
+After creating a new Supabase project (hosted) or [starting local Supabase](#local-supabase-docker), add the following environment variables to your `.env.local` file:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=
@@ -39,7 +52,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
 ## Supabase Database Setup
 
-To set up the necessary database tables in your Supabase project, run the following SQL queries in the SQL Editor.
+For **local Supabase**, tables, RLS, storage bucket `media`, and Realtime are applied automatically from `supabase/migrations/` when you run `npm run supabase:start` or `npm run supabase:reset`.
+
+For a **hosted** Supabase project, set up the necessary database tables by running the following SQL queries in the SQL Editor.
 
 ### Chats Table
 

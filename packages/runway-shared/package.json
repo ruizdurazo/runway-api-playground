@@ -19,7 +19,7 @@
     "prepare": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@runwayml/sdk": "^2.8.2"
+    "@runwayml/sdk": "^3.21.0"
   },
   "devDependencies": {
     "typescript": "^5"

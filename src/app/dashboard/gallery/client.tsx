@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button"
 import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import styles from "./page.module.scss"
+import { getMediaViewUrl } from "@/lib/media-view-url"
 
 interface GalleryMediaItem {
   id: string
@@ -43,30 +44,23 @@ export default function GalleryClient() {
         return
       }
 
-      const mediaWithUrls = await Promise.all(
-        data.map(async (item) => {
-          const { data: signedData } = await supabase.storage
-            .from("media")
-            .createSignedUrl(item.path, 3600)
+      const mediaWithUrls: GalleryMediaItem[] = data.map((item) => {
+        const promptData = item.prompt as unknown as {
+          chat_id: string
+          ratio: string
+        } | null
 
-          // Supabase returns the joined prompt as an object
-          const promptData = item.prompt as unknown as {
-            chat_id: string
-            ratio: string
-          } | null
-
-          return {
-            id: item.id,
-            path: item.path,
-            type: item.type as "image" | "video",
-            created_at: item.created_at,
-            prompt: promptData
-              ? { chat_id: promptData.chat_id, ratio: promptData.ratio }
-              : undefined,
-            url: signedData?.signedUrl || "",
-          }
-        }),
-      )
+        return {
+          id: item.id,
+          path: item.path,
+          type: item.type as "image" | "video",
+          created_at: item.created_at,
+          prompt: promptData
+            ? { chat_id: promptData.chat_id, ratio: promptData.ratio }
+            : undefined,
+          url: getMediaViewUrl(item.path),
+        }
+      })
 
       setMedia(mediaWithUrls)
     } catch (err) {
@@ -116,15 +110,11 @@ export default function GalleryClient() {
               .eq("id", payload.new.prompt_id)
               .single()
             if (cancelled) return
-            const { data: signedData } = await supabase.storage
-              .from("media")
-              .createSignedUrl(payload.new.path, 3600)
-            if (cancelled) return
             const newItem: GalleryMediaItem = {
               id: payload.new.id,
               path: payload.new.path,
-              url: signedData?.signedUrl || "",
-              type: payload.new.type,
+              url: getMediaViewUrl(payload.new.path),
+              type: payload.new.type as "image" | "video",
               created_at: payload.new.created_at,
               prompt: chatData
                 ? { chat_id: chatData.chat_id, ratio: chatData.ratio }

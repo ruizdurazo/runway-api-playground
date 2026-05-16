@@ -17,7 +17,11 @@
     "mcp:dev": "npm run dev --workspace=@runway-playground/mcp",
     "mcp:build": "npm run build --workspace=@runway-playground/mcp",
     "build:mcp": "npm run build --workspace=@runway-playground/shared && npm run build --workspace=@runway-playground/mcp",
-    "start:mcp": "npm run start --workspace=@runway-playground/mcp"
+    "start:mcp": "npm run start --workspace=@runway-playground/mcp",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:status": "supabase status",
+    "supabase:reset": "supabase db reset"
   },
   "dependencies": {
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -27,7 +31,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@runway-playground/shared": "file:packages/runway-shared",
-    "@runwayml/sdk": "^2.8.2",
+    "@runwayml/sdk": "^3.21.0",
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/ssr": "^0.7.0",

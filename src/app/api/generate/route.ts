@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 import {
   getModelById,
   getStrategy,
+  mergeAdditionalParams,
   resolveModel,
   validateModelInputs,
 } from "@runway-playground/shared"
@@ -29,7 +30,21 @@ export async function POST(request: NextRequest) {
 
   // ---- Parse request -------------------------------------------------------
   const body = await request.json()
-  const { promptId, model: rawModel, generationType, assets, ratio } = body
+  const {
+    promptId,
+    model: rawModel,
+    generationType,
+    assets,
+    ratio,
+    additionalParams: additionalOverrides,
+  } = body as {
+    promptId?: string
+    model?: string
+    generationType?: string
+    assets?: { url: string; tag?: string; position?: "first" | "last" }[]
+    ratio?: string
+    additionalParams?: Record<string, unknown>
+  }
 
   if (!promptId || !rawModel || !generationType) {
     return NextResponse.json(
@@ -70,17 +85,40 @@ export async function POST(request: NextRequest) {
 
   const positionsRequired =
     modelDef.inputs.kind === "standard" && modelDef.inputs.positionsRequired
+
   const inputs =
-    media?.map((m) => ({
-      type: (m.type ?? "image") as "image" | "video",
-      url: m.url || "",
-      tag: m.tag,
-      ...(positionsRequired ? { position: "first" as const } : {}),
-    })) || []
+    media?.map((m) => {
+      const pos =
+        m.position === "last"
+          ? ("last" as const)
+          : m.position === "first"
+            ? ("first" as const)
+            : ("first" as const)
+      return {
+        type: (m.type ?? "image") as "image" | "video",
+        url: (m as { url?: string }).url || "",
+        tag: m.tag,
+        ...(positionsRequired ? { position: pos } : {}),
+      }
+    }) || []
+
+  const hasAssets = Array.isArray(assets) && assets.length > 0
+  const usingTextOnlyEndpoint =
+    !hasAssets && Boolean(modelDef.textOnlyEndpoint)
+
+  const mergedAdditional = mergeAdditionalParams(model, additionalOverrides ?? null)
 
   // ---- Validate ------------------------------------------------------------
   try {
-    validateModelInputs(model, generationType, prompt.prompt_text, inputs, ratio)
+    validateModelInputs(
+      model,
+      generationType as "image" | "video",
+      prompt.prompt_text,
+      inputs,
+      ratio ?? "",
+      mergedAdditional,
+      { usingTextOnlyEndpoint },
+    )
   } catch (err) {
     return NextResponse.json(
       { message: (err as Error).message },
@@ -89,10 +127,8 @@ export async function POST(request: NextRequest) {
   }
 
   // ---- Determine strategy --------------------------------------------------
-  // If no assets provided and model has a text-only endpoint, use that instead
-  const hasAssets = assets && assets.length > 0
   const endpoint =
-    !hasAssets && modelDef.textOnlyEndpoint
+    usingTextOnlyEndpoint && modelDef.textOnlyEndpoint
       ? modelDef.textOnlyEndpoint
       : modelDef.endpoint
 
@@ -101,20 +137,19 @@ export async function POST(request: NextRequest) {
   // ---- Execute strategy ----------------------------------------------------
   try {
     const client = new RunwayML({ apiKey })
+    const strategyAssets = (assets ?? []).map((a) => ({
+      url: a.url,
+      tag: a.tag ?? "",
+      ...(a.position ? { position: a.position } : {}),
+    }))
+
     const result = await strategy.execute({
       client,
       model,
       promptText: prompt.prompt_text,
-      assets: assets || [],
+      assets: strategyAssets,
       ratio,
-      additionalParams: modelDef.additionalParams
-        ? Object.fromEntries(
-            Object.entries(modelDef.additionalParams).map(([k, v]) => [
-              k,
-              v.default,
-            ]),
-          )
-        : undefined,
+      additionalParams: mergedAdditional,
     })
 
     // ---- Post-processing: clean old outputs, then save new one ---------------

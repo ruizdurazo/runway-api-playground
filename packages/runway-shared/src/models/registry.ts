@@ -8,6 +8,10 @@ function defineModel(model: ModelDefinition): ModelDefinition {
   return model
 }
 
+const DURATION_2_TO_10 = [
+  2, 3, 4, 5, 6, 7, 8, 9, 10,
+] as const satisfies readonly number[]
+
 // ---------------------------------------------------------------------------
 // Model registry -- single source of truth
 // ---------------------------------------------------------------------------
@@ -26,8 +30,8 @@ export const MODEL_REGISTRY = {
     inputs: {
       kind: "standard",
       type: "image",
-      minCount: 1,
-      maxCount: Infinity,
+      minCount: 0,
+      maxCount: 1,
       tagsAllowed: false,
       positionsRequired: true,
       allowedFileTypes: ["image/*"],
@@ -40,7 +44,9 @@ export const MODEL_REGISTRY = {
       "960:960",
       "1584:672",
     ],
-    additionalParams: { duration: { default: 10, options: [5, 10] } },
+    additionalParams: {
+      duration: { default: 10, options: [...DURATION_2_TO_10] },
+    },
   }),
 
   gen3a_turbo: defineModel({
@@ -50,18 +56,19 @@ export const MODEL_REGISTRY = {
     creditsPerUnit: 5,
     creditUnit: "second",
     generationTypes: ["video"],
-    prompt: { required: false, maxLength: 1000 },
+    prompt: { required: true, maxLength: 1000 },
     inputs: {
       kind: "standard",
       type: "image",
       minCount: 1,
-      maxCount: Infinity,
+      maxCount: 2,
       tagsAllowed: false,
       positionsRequired: true,
       allowedFileTypes: ["image/*"],
     },
     ratios: ["1280:768", "768:1280"],
     additionalParams: { duration: { default: 10, options: [5, 10] } },
+    supportsLastFrame: true,
   }),
 
   "gen4.5": defineModel({
@@ -77,7 +84,7 @@ export const MODEL_REGISTRY = {
       kind: "standard",
       type: "image",
       minCount: 0,
-      maxCount: Infinity,
+      maxCount: 1,
       tagsAllowed: false,
       positionsRequired: true,
       allowedFileTypes: ["image/*"],
@@ -89,9 +96,11 @@ export const MODEL_REGISTRY = {
       "832:1104",
       "960:960",
       "1584:672",
-      "672:1584",
     ],
-    additionalParams: { duration: { default: 10, options: [5, 10] } },
+    textOnlyRatios: ["1280:720", "720:1280"],
+    additionalParams: {
+      duration: { default: 8, options: [...DURATION_2_TO_10] },
+    },
   }),
 
   veo3: defineModel({
@@ -107,12 +116,12 @@ export const MODEL_REGISTRY = {
       kind: "standard",
       type: "image",
       minCount: 0,
-      maxCount: Infinity,
+      maxCount: 1,
       tagsAllowed: false,
       positionsRequired: true,
       allowedFileTypes: ["image/*"],
     },
-    ratios: ["1280:720", "720:1280"],
+    ratios: ["1280:720", "720:1280", "1080:1920", "1920:1080"],
     additionalParams: { duration: { default: 8, options: [8] } },
   }),
 
@@ -129,13 +138,17 @@ export const MODEL_REGISTRY = {
       kind: "standard",
       type: "image",
       minCount: 0,
-      maxCount: Infinity,
+      maxCount: 2,
       tagsAllowed: false,
       positionsRequired: true,
       allowedFileTypes: ["image/*"],
     },
-    ratios: ["1280:720", "720:1280"],
-    additionalParams: { duration: { default: 8, options: [8] } },
+    ratios: ["1280:720", "720:1280", "1080:1920", "1920:1080"],
+    additionalParams: {
+      duration: { default: 8, options: [4, 6, 8] },
+      audio: { default: true },
+    },
+    supportsLastFrame: true,
   }),
 
   "veo3.1_fast": defineModel({
@@ -151,13 +164,17 @@ export const MODEL_REGISTRY = {
       kind: "standard",
       type: "image",
       minCount: 0,
-      maxCount: Infinity,
+      maxCount: 2,
       tagsAllowed: false,
       positionsRequired: true,
       allowedFileTypes: ["image/*"],
     },
-    ratios: ["1280:720", "720:1280"],
-    additionalParams: { duration: { default: 8, options: [8] } },
+    ratios: ["1280:720", "720:1280", "1080:1920", "1920:1080"],
+    additionalParams: {
+      duration: { default: 8, options: [4, 6, 8] },
+      audio: { default: true },
+    },
+    supportsLastFrame: true,
   }),
 
   // ---- Video: Special endpoints ---------------------------------------------
@@ -333,6 +350,109 @@ export const MODEL_REGISTRY = {
     ],
   }),
 
+  gpt_image_2: defineModel({
+    displayName: "GPT Image 2",
+    endpoint: "text_to_image",
+    category: "image",
+    creditsPerUnit: 20,
+    creditUnit: "image",
+    generationTypes: ["image"],
+    prompt: { required: true, maxLength: 32000 },
+    inputs: {
+      kind: "standard",
+      type: "image",
+      minCount: 0,
+      maxCount: 16,
+      tagsAllowed: true,
+      positionsRequired: false,
+      allowedFileTypes: ["image/*"],
+    },
+    ratios: [
+      "2048:880",
+      "1920:1088",
+      "1920:1280",
+      "1920:1440",
+      "1920:1536",
+      "1920:1920",
+      "1536:1920",
+      "1440:1920",
+      "1280:1920",
+      "1088:1920",
+      "2912:1248",
+      "2560:1440",
+      "2560:1712",
+      "2560:1920",
+      "2560:2048",
+      "2560:2560",
+      "2048:2560",
+      "1920:2560",
+      "1712:2560",
+      "1440:2560",
+      "3840:1648",
+      "3840:2160",
+      "3504:2336",
+      "3264:2448",
+      "3200:2560",
+      "2880:2880",
+      "2560:3200",
+      "2448:3264",
+      "2336:3504",
+      "2160:3840",
+      "auto",
+    ],
+  }),
+
+  gemini_image3_pro: defineModel({
+    displayName: "Gemini Image 3 Pro",
+    endpoint: "text_to_image",
+    category: "image",
+    creditsPerUnit: 20,
+    creditUnit: "image",
+    generationTypes: ["image"],
+    prompt: { required: true, maxLength: 5500 },
+    inputs: {
+      kind: "standard",
+      type: "image",
+      minCount: 0,
+      maxCount: 14,
+      tagsAllowed: true,
+      positionsRequired: false,
+      allowedFileTypes: ["image/*"],
+    },
+    ratios: [
+      "1344:768",
+      "768:1344",
+      "1024:1024",
+      "1184:864",
+      "864:1184",
+      "1536:672",
+      "832:1248",
+      "1248:832",
+      "896:1152",
+      "1152:896",
+      "2048:2048",
+      "1696:2528",
+      "2528:1696",
+      "1792:2400",
+      "2400:1792",
+      "1856:2304",
+      "2304:1856",
+      "1536:2752",
+      "2752:1536",
+      "3168:1344",
+      "4096:4096",
+      "3392:5056",
+      "5056:3392",
+      "3584:4800",
+      "4800:3584",
+      "3712:4608",
+      "4608:3712",
+      "3072:5504",
+      "5504:3072",
+      "6336:2688",
+    ],
+  }),
+
   "gemini_2.5_flash": defineModel({
     displayName: "Gemini 2.5 Flash",
     endpoint: "text_to_image",
@@ -357,6 +477,10 @@ export const MODEL_REGISTRY = {
       "1184:864",
       "864:1184",
       "1536:672",
+      "832:1248",
+      "1248:832",
+      "896:1152",
+      "1152:896",
     ],
   }),
 }
@@ -370,6 +494,22 @@ export type Model = keyof typeof MODEL_REGISTRY
 
 export const MODEL_ALIASES: Partial<Record<string, Model>> = {
   veo3_text: "veo3",
+  /** Legacy / preview id — not in public text_to_image enum; map to closest Gemini image model. */
+  "gemini_image3.1_flash": "gemini_2.5_flash",
+  gemini_image3_1_flash: "gemini_2.5_flash",
+}
+
+/**
+ * Billing / usage API keys that are not in {@link MODEL_REGISTRY} but should show a
+ * readable name in dashboards (e.g. settings usage charts).
+ */
+const RUNWAY_USAGE_MODEL_LABELS: Record<string, string> = {
+  gemini_image3_1_flash: "Gemini Image 3.1 Flash",
+  "gemini_image3.1_flash": "Gemini Image 3.1 Flash",
+  gwm1_avatar_async_audio_to_video: "GWM-1 Avatar (audio to video)",
+  gwm1_avatar_async_text_to_video: "GWM-1 Avatar (text to video)",
+  gwm1_avatars: "GWM-1 Avatars",
+  seedance2: "Seedance 2",
 }
 
 // ---------------------------------------------------------------------------
@@ -397,6 +537,9 @@ export function getModelDisplayName(model: string): string {
   if (model in MODEL_ALIASES) {
     return MODEL_REGISTRY[MODEL_ALIASES[model]!].displayName
   }
+  if (model in RUNWAY_USAGE_MODEL_LABELS) {
+    return RUNWAY_USAGE_MODEL_LABELS[model]!
+  }
   return model
 }
 
@@ -405,8 +548,7 @@ export function getModelsByGenerationType(
 ): { id: Model; definition: ModelDefinition }[] {
   return (Object.entries(MODEL_REGISTRY) as [Model, ModelDefinition][]).filter(
     ([, def]) => def.generationTypes.includes(type),
-  )
-    .map(([id, definition]) => ({ id, definition }))
+  ).map(([id, definition]) => ({ id, definition }))
 }
 
 export function getModelsByCategory(
@@ -414,8 +556,7 @@ export function getModelsByCategory(
 ): { id: Model; definition: ModelDefinition }[] {
   return (Object.entries(MODEL_REGISTRY) as [Model, ModelDefinition][]).filter(
     ([, def]) => def.category === category,
-  )
-    .map(([id, definition]) => ({ id, definition }))
+  ).map(([id, definition]) => ({ id, definition }))
 }
 
 export function getAllModels(): Model[] {

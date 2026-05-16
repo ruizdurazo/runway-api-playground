@@ -32,7 +32,16 @@ export default function PromptActions() {
       setExistingMedia(
         prompt.media
           ?.filter((m) => m.category === "input")
-          .map((m) => ({ ...m, tag: m.tag ?? "", position: null })) ?? [],
+          .map((m) => ({
+            ...m,
+            tag: m.tag ?? "",
+            position:
+              m.position === "last"
+                ? ("last" as const)
+                : m.position === "first"
+                  ? ("first" as const)
+                  : null,
+          })) ?? [],
       )
       setMode("edit")
     }

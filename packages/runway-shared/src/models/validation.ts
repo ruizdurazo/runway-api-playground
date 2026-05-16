@@ -20,6 +20,7 @@ export function validateModelInputs(
   inputs: ValidationInput[],
   ratio: string,
   additionalParams?: Record<string, unknown>,
+  options?: { usingTextOnlyEndpoint?: boolean },
 ): void {
   const resolved = resolveModel(modelId)
   const config = MODEL_REGISTRY[resolved]
@@ -45,21 +46,40 @@ export function validateModelInputs(
     )
   }
 
-  // Ratio (fixed: no longer shadows the outer `ratio` variable)
-  if (config.ratios.length > 0 && !config.ratios.some((r) => r === ratio)) {
+  const ratioList =
+    options?.usingTextOnlyEndpoint &&
+    config.textOnlyRatios &&
+    config.textOnlyRatios.length > 0
+      ? config.textOnlyRatios
+      : config.ratios
+
+  // Ratio
+  if (ratioList.length > 0 && !ratioList.some((r) => r === ratio)) {
     throw new Error(
       `Invalid ratio "${ratio}" for ${config.displayName}`,
     )
   }
 
   // Input validation
-  validateInputs(config.inputs, inputs, config.displayName)
+  validateInputs(
+    config.inputs,
+    inputs,
+    config.displayName,
+    config.supportsLastFrame === true,
+  )
 
   // Additional params
   if (additionalParams && config.additionalParams) {
     for (const [key, value] of Object.entries(additionalParams)) {
       const paramConfig = config.additionalParams[key]
       if (!paramConfig) continue
+
+      if (typeof paramConfig.default === "boolean") {
+        if (typeof value !== "boolean") {
+          throw new Error(`"${key}" must be a boolean for ${config.displayName}`)
+        }
+        continue
+      }
 
       if (paramConfig.options && !paramConfig.options.includes(value as number)) {
         throw new Error(
@@ -88,6 +108,7 @@ function validateInputs(
   inputConfig: typeof MODEL_REGISTRY[keyof typeof MODEL_REGISTRY]["inputs"],
   inputs: ValidationInput[],
   modelName: string,
+  supportsLastFrame: boolean,
 ): void {
   switch (inputConfig.kind) {
     case "none":
@@ -95,7 +116,7 @@ function validateInputs(
       break
 
     case "standard":
-      validateStandardInputs(inputConfig, inputs, modelName)
+      validateStandardInputs(inputConfig, inputs, modelName, supportsLastFrame)
       break
 
     case "named":
@@ -108,6 +129,7 @@ function validateStandardInputs(
   config: StandardInputConfig,
   inputs: ValidationInput[],
   modelName: string,
+  supportsLastFrame: boolean,
 ): void {
   const count = inputs.length
 
@@ -127,9 +149,6 @@ function validateStandardInputs(
         `Input ${i + 1} must be ${config.type} for ${modelName}`,
       )
     }
-    if (input.tag && !config.tagsAllowed) {
-      throw new Error(`Tags are not allowed for ${modelName}`)
-    }
     if (config.tagsAllowed && input.tag && (input.tag.length < 3 || input.tag.length > 16)) {
       throw new Error(
         `Tag "${input.tag}" on input ${i + 1} must be 3–16 characters`,
@@ -138,6 +157,11 @@ function validateStandardInputs(
     if (config.positionsRequired && !input.position) {
       throw new Error(
         `Position is required for input ${i + 1} in ${modelName}`,
+      )
+    }
+    if (config.positionsRequired && input.position === "last" && !supportsLastFrame) {
+      throw new Error(
+        `Position "last" is not supported for ${modelName}`,
       )
     }
     if (config.allowedFileTypes && input.file) {
@@ -149,6 +173,28 @@ function validateStandardInputs(
           `Invalid file type for input ${i + 1} in ${modelName}`,
         )
       }
+    }
+  }
+
+  if (config.positionsRequired && supportsLastFrame) {
+    const positions = inputs.map((i) => i.position)
+    const first = positions.filter((p) => p === "first").length
+    const last = positions.filter((p) => p === "last").length
+    if (first > 1) {
+      throw new Error(`At most one "first" frame is allowed for ${modelName}`)
+    }
+    if (last > 1) {
+      throw new Error(`At most one "last" frame is allowed for ${modelName}`)
+    }
+    if (count === 1 && positions[0] === "last") {
+      throw new Error(
+        `A single image must use the "first" position for ${modelName}`,
+      )
+    }
+    if (count === 2 && (first !== 1 || last !== 1)) {
+      throw new Error(
+        `Two images require exactly one "first" and one "last" position for ${modelName}`,
+      )
     }
   }
 }

@@ -18,6 +18,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js"
 
 import styles from "./page.module.scss"
 import { formatRelativeTime } from "@/lib/utils"
+import { getMediaViewUrl } from "@/lib/media-view-url"
 
 interface Chat {
   id: string
@@ -92,15 +93,9 @@ export default function DashboardClient() {
         if (error || !data) {
           return { chatId: chat.id, url: null, type: null, count }
         }
-        const signed = await supabase.storage
-          .from("media")
-          .createSignedUrl(data.path, 3600)
-        if (signed.error || !signed.data) {
-          return { chatId: chat.id, url: null, type: null, count }
-        }
         return {
           chatId: chat.id,
-          url: signed.data.signedUrl,
+          url: getMediaViewUrl(data.path),
           type: data.type,
           count,
         }

@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@runway-playground/shared": "file:../runway-shared",
-    "@runwayml/sdk": "^2.8.2",
+    "@runwayml/sdk": "^3.21.0",
     "mcp-use": "1.24.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

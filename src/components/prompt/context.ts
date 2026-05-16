@@ -1,6 +1,12 @@
 "use client"
 
-import { createContext, useContext } from "react"
+import {
+  createContext,
+  useContext,
+  type Dispatch,
+  type SetStateAction,
+  type SubmitEvent,
+} from "react"
 import type { Model, ModelDefinition, GenerationType } from "@runway-playground/shared"
 import type { Prompt, MediaItem } from "@/lib/types"
 
@@ -47,14 +53,19 @@ export interface PromptContextValue {
   removeNewFile: (index: number) => void
   removeExistingMedia: (index: number) => void
   updateTag: (index: number, tag: string, isExisting: boolean) => void
+  updatePosition: (
+    index: number,
+    position: "first" | "last" | null,
+    isExisting: boolean,
+  ) => void
 
   // Ratio
   ratio: string
   setRatio: (ratio: string) => void
 
-  // Show references toggle
-  showReferences: boolean
-  setShowReferences: (show: boolean) => void
+  /** Partial overrides for model defaults (duration, audio, …). */
+  generationOptions: Record<string, unknown>
+  setGenerationOptions: Dispatch<SetStateAction<Record<string, unknown>>>
 
   // Computed
   maxInputCount: number
@@ -67,9 +78,13 @@ export interface PromptContextValue {
   outputs: MediaItem[]
 
   // Callbacks
-  onSubmit: (e: React.FormEvent) => void
+  onSubmit: (e: SubmitEvent<HTMLFormElement>) => void
   onDelete?: (promptId: string) => Promise<void>
-  onRegenerate?: (promptId: string, freshPrompt?: Prompt) => Promise<void>
+  onRegenerate?: (
+    promptId: string,
+    freshPrompt?: Prompt,
+    generateOptions?: { additionalParams?: Record<string, unknown> },
+  ) => Promise<void>
 }
 
 // ---------------------------------------------------------------------------

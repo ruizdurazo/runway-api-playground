@@ -1,8 +1,9 @@
+import { ensureRunwayImageUri } from "../ensure-runway-image-uri.js"
 import type { GenerationStrategy, GenerationParams, GenerationResult } from "./types.js"
 
 export const textToImageStrategy: GenerationStrategy = {
   async execute(params: GenerationParams): Promise<GenerationResult> {
-    const { client, model, promptText, assets, ratio } = params
+    const { client, model, promptText, assets, ratio, additionalParams } = params
 
     let effectiveModel = model
     const referenceImages = assets.map((a, index) => ({
@@ -22,7 +23,20 @@ export const textToImageStrategy: GenerationStrategy = {
     }
 
     if (referenceImages.length > 0) {
-      createParams.referenceImages = referenceImages
+      createParams.referenceImages = await Promise.all(
+        referenceImages.map(async (ref) => ({
+          ...ref,
+          uri: await ensureRunwayImageUri(ref.uri),
+        })),
+      )
+    }
+
+    if (additionalParams) {
+      for (const key of ["outputCount", "quality", "background", "seed"] as const) {
+        if (additionalParams[key] !== undefined) {
+          createParams[key] = additionalParams[key]
+        }
+      }
     }
 
     // @ts-expect-error -- SDK model type narrowing

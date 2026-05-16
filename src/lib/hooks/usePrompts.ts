@@ -2,24 +2,19 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
-import { validateModelInputs } from "@runway-playground/shared"
+import { getMediaViewUrl } from "@/lib/media-view-url"
+import { validateModelInputs, getModelById, mergeAdditionalParams } from "@runway-playground/shared"
 import type { Prompt, MediaItem, GeneratePayload, EditPayload } from "@/lib/types"
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function signMediaUrls(
-  media: Omit<MediaItem, "url">[],
-): Promise<MediaItem[]> {
-  return Promise.all(
-    media.map(async (m) => {
-      const { data } = await supabase.storage
-        .from("media")
-        .createSignedUrl(m.path, 3600)
-      return { ...m, url: data?.signedUrl ?? "" }
-    }),
-  )
+function attachMediaDisplayUrls(media: Omit<MediaItem, "url">[]): MediaItem[] {
+  return media.map((m) => ({
+    ...m,
+    url: getMediaViewUrl(m.path),
+  }))
 }
 
 function scrollPromptCardIntoView(promptId: string) {
@@ -38,12 +33,12 @@ function scrollPromptCardIntoView(promptId: string) {
 async function fetchSinglePrompt(promptId: string): Promise<Prompt> {
   const { data, error } = await supabase
     .from("prompts")
-    .select("*, media(id, path, type, category, tag)")
+    .select("*, media(id, path, type, category, tag, position)")
     .eq("id", promptId)
     .order("id", { referencedTable: "media", ascending: true })
     .single()
   if (error) throw error
-  const processedMedia = await signMediaUrls(data.media ?? [])
+  const processedMedia = attachMediaDisplayUrls(data.media ?? [])
   return { ...data, media: processedMedia }
 }
 
@@ -65,7 +60,7 @@ export function usePrompts(chatId: string) {
     const fetchAll = async () => {
       const { data, error } = await supabase
         .from("prompts")
-        .select("*, media(id, path, type, category, tag)")
+        .select("*, media(id, path, type, category, tag, position)")
         .eq("chat_id", chatId)
         .order("created_at", { ascending: true })
         .order("id", { referencedTable: "media", ascending: true })
@@ -76,12 +71,10 @@ export function usePrompts(chatId: string) {
         return
       }
 
-      const processed = await Promise.all(
-        data.map(async (prompt) => ({
-          ...prompt,
-          media: await signMediaUrls(prompt.media ?? []),
-        })),
-      )
+      const processed = data.map((prompt) => ({
+        ...prompt,
+        media: attachMediaDisplayUrls(prompt.media ?? []),
+      }))
       setPrompts(processed)
     }
     fetchAll()
@@ -104,7 +97,8 @@ export function usePrompts(chatId: string) {
 
   const createPrompt = useCallback(
     async (payload: GeneratePayload) => {
-      const { text, model, generationType, filesWithTags, ratio } = payload
+      const { text, model, generationType, filesWithTags, ratio, additionalParams } =
+        payload
 
       if (!text && model !== "upscale_v1") throw new Error("Prompt is required")
 
@@ -116,6 +110,12 @@ export function usePrompts(chatId: string) {
       const apiKey = user.user_metadata.runway_api_key
       if (!apiKey) throw new Error("Runway API key not set in settings")
 
+      const mergedForValidate = mergeAdditionalParams(model, additionalParams ?? null)
+      const willHaveFileInputs = filesWithTags.length > 0
+      const inputDef = getModelById(model)
+      const usingTextOnly =
+        !willHaveFileInputs && Boolean(inputDef.textOnlyEndpoint)
+
       validateModelInputs(
         model,
         generationType,
@@ -124,10 +124,17 @@ export function usePrompts(chatId: string) {
           type: f.file.type.startsWith("image/")
             ? ("image" as const)
             : ("video" as const),
-          tag: f.tag,
+          tag:
+            inputDef.inputs.kind === "standard" && inputDef.inputs.tagsAllowed
+              ? f.tag ?? undefined
+              : inputDef.inputs.kind === "named"
+                ? f.tag ?? undefined
+                : undefined,
           position: f.position ?? undefined,
         })),
         ratio,
+        mergedForValidate,
+        { usingTextOnlyEndpoint: usingTextOnly },
       )
 
       // Insert prompt row
@@ -163,9 +170,16 @@ export function usePrompts(chatId: string) {
         // Upload input files
         const assets = await Promise.all(
           filesWithTags.map(async (item, index) => {
-            const effectiveTag = item.tag || `ref${index + 1}`
+            const storageTag =
+              inputDef.inputs.kind === "standard" && inputDef.inputs.tagsAllowed
+                ? item.tag || `ref${index + 1}`
+                : inputDef.inputs.kind === "named"
+                  ? item.tag || null
+                  : null
 
-            const filename = `${user.id}/inputs/${promptId}-${item.file.name}`
+            // Unique path per slot: same `file.name` on two inputs (e.g. two "frame.png")
+            // would otherwise share one storage key and the last upload would win.
+            const filename = `${user.id}/inputs/${promptId}-${index}-${Date.now()}-${item.file.name}`
             const { error: uploadError } = await supabase.storage
               .from("media")
               .upload(filename, item.file)
@@ -178,7 +192,8 @@ export function usePrompts(chatId: string) {
               path: filename,
               type,
               category: "input",
-              tag: effectiveTag,
+              tag: storageTag,
+              position: item.position ?? null,
             })
             if (insertError) throw insertError
 
@@ -190,7 +205,8 @@ export function usePrompts(chatId: string) {
 
             return {
               url: signedData.signedUrl,
-              tag: effectiveTag,
+              tag: storageTag ?? "",
+              ...(item.position ? { position: item.position } : {}),
             }
           }),
         )
@@ -205,6 +221,7 @@ export function usePrompts(chatId: string) {
             generationType,
             assets,
             ratio,
+            additionalParams,
           }),
         })
 
@@ -229,20 +246,52 @@ export function usePrompts(chatId: string) {
 
   const updatePrompt = useCallback(
     async (promptId: string, payload: EditPayload): Promise<Prompt> => {
-      const { text, model, generationType, existingMedia, newFilesWithTags, ratio } =
-        payload
+      const {
+        text,
+        model,
+        generationType,
+        existingMedia,
+        newFilesWithTags,
+        ratio,
+        additionalParams,
+      } = payload
+
+      const mergedForValidate = mergeAdditionalParams(model, additionalParams ?? null)
+      const willHaveFileInputs =
+        existingMedia.length + newFilesWithTags.length > 0
+      const inputDef = getModelById(model)
+      const usingTextOnly =
+        !willHaveFileInputs && Boolean(inputDef.textOnlyEndpoint)
+
+      const tagForValidation = (raw: string | null | undefined) =>
+        inputDef.inputs.kind === "standard" && inputDef.inputs.tagsAllowed
+          ? raw ?? undefined
+          : inputDef.inputs.kind === "named"
+            ? raw ?? undefined
+            : undefined
 
       validateModelInputs(
         model,
         generationType,
         text,
-        existingMedia.map((m) => ({
-          type: m.type ?? ("image" as const),
-          url: m.url,
-          tag: m.tag,
-          position: m.position ?? undefined,
-        })),
+        [
+          ...existingMedia.map((m) => ({
+            type: m.type ?? ("image" as const),
+            url: m.url,
+            tag: tagForValidation(m.tag),
+            position: m.position ?? undefined,
+          })),
+          ...newFilesWithTags.map((f) => ({
+            type: f.file.type.startsWith("image/")
+              ? ("image" as const)
+              : ("video" as const),
+            tag: tagForValidation(f.tag),
+            position: f.position ?? undefined,
+          })),
+        ],
         ratio,
+        mergedForValidate,
+        { usingTextOnlyEndpoint: usingTextOnly },
       )
 
       // Delete old outputs
@@ -286,11 +335,20 @@ export function usePrompts(chatId: string) {
         await supabase.from("media").delete().eq("id", del.id)
       }
 
-      // Update tags on kept media (assign fallback if empty)
+      // Update tags and frame positions on kept media
       for (const [i, m] of existingMedia.entries()) {
+        const nextTag =
+          inputDef.inputs.kind === "standard" && inputDef.inputs.tagsAllowed
+            ? m.tag || `ref${i + 1}`
+            : inputDef.inputs.kind === "named"
+              ? m.tag || null
+              : null
         await supabase
           .from("media")
-          .update({ tag: m.tag || `ref${i + 1}` })
+          .update({
+            tag: nextTag,
+            position: m.position ?? null,
+          })
           .eq("id", m.id)
       }
 
@@ -302,10 +360,15 @@ export function usePrompts(chatId: string) {
 
       const existingCount = existingMedia.length
       await Promise.all(
-        newFilesWithTags.map(async ({ file, tag }, index) => {
-          const effectiveTag = tag || `ref${existingCount + index + 1}`
+        newFilesWithTags.map(async ({ file, tag, position }, index) => {
+          const storageTag =
+            inputDef.inputs.kind === "standard" && inputDef.inputs.tagsAllowed
+              ? tag || `ref${existingCount + index + 1}`
+              : inputDef.inputs.kind === "named"
+                ? tag || null
+                : null
 
-          const filename = `${user.id}/inputs/${promptId}-${Date.now()}-${file.name}`
+          const filename = `${user.id}/inputs/${promptId}-${existingCount + index}-${Date.now()}-${file.name}`
           const { error: uploadError } = await supabase.storage
             .from("media")
             .upload(filename, file)
@@ -318,7 +381,8 @@ export function usePrompts(chatId: string) {
             path: filename,
             type,
             category: "input",
-            tag: effectiveTag,
+            tag: storageTag,
+            position: position ?? null,
           })
           if (insertError) throw insertError
         }),
@@ -330,7 +394,11 @@ export function usePrompts(chatId: string) {
   )
 
   const regeneratePrompt = useCallback(
-    async (promptId: string, freshPrompt?: Prompt) => {
+    async (
+      promptId: string,
+      freshPrompt?: Prompt,
+      generateOptions?: { additionalParams?: Record<string, unknown> },
+    ) => {
       const prompt = freshPrompt ?? prompts.find((p) => p.id === promptId)
       if (!prompt) throw new Error("Prompt not found")
 
@@ -349,12 +417,20 @@ export function usePrompts(chatId: string) {
       // Fetch input media from DB and re-sign URLs so they're fresh
       const { data: dbInputs } = await supabase
         .from("media")
-        .select("id, path, type, tag")
+        .select("id, path, type, tag, position")
         .eq("prompt_id", promptId)
         .eq("category", "input")
         .order("id", { ascending: true })
 
       const inputMedia = dbInputs ?? []
+
+      const mergedForValidate = mergeAdditionalParams(
+        prompt.model,
+        generateOptions?.additionalParams ?? null,
+      )
+      const hasAssets = inputMedia.length > 0
+      const usingTextOnly =
+        !hasAssets && Boolean(getModelById(prompt.model).textOnlyEndpoint)
 
       validateModelInputs(
         prompt.model,
@@ -363,9 +439,16 @@ export function usePrompts(chatId: string) {
         inputMedia.map((m) => ({
           type: (m.type ?? "image") as "image" | "video",
           tag: m.tag,
-          position: "first" as const,
+          position:
+            m.position === "last"
+              ? ("last" as const)
+              : m.position === "first"
+                ? ("first" as const)
+                : ("first" as const),
         })),
         prompt.ratio,
+        mergedForValidate,
+        { usingTextOnlyEndpoint: usingTextOnly },
       )
 
       const assets = await Promise.all(
@@ -374,7 +457,17 @@ export function usePrompts(chatId: string) {
             .from("media")
             .createSignedUrl(m.path, 3600)
           if (signError) throw signError
-          return { url: signedData.signedUrl, tag: m.tag ?? "" }
+          const pos =
+            m.position === "last"
+              ? ("last" as const)
+              : m.position === "first"
+                ? ("first" as const)
+                : undefined
+          return {
+            url: signedData.signedUrl,
+            tag: m.tag ?? "",
+            ...(pos ? { position: pos } : {}),
+          }
         }),
       )
 
@@ -387,6 +480,7 @@ export function usePrompts(chatId: string) {
           generationType: prompt.generation_type,
           assets,
           ratio: prompt.ratio,
+          additionalParams: generateOptions?.additionalParams,
         }),
       })
       if (!response.ok) {
@@ -411,7 +505,9 @@ export function usePrompts(chatId: string) {
       await supabase.storage.from("media").remove([m.path])
     }
     await supabase.from("media").delete().eq("prompt_id", promptId)
-    await supabase.from("prompts").delete().eq("id", promptId)
+    const { error } = await supabase.from("prompts").delete().eq("id", promptId)
+    if (error) throw error
+    setPrompts((prev) => prev.filter((p) => p.id !== promptId))
   }, [])
 
   return {

@@ -46,13 +46,16 @@ export default function ChatClient() {
             <Prompt.Output />
             <Prompt.Header />
             <Prompt.MediaItem />
-            <Prompt.TextInput />
             <Prompt.MediaInput />
-            <div className={styles.promptActions}>
-              <Prompt.GenerationTypeToggle />
-              <Prompt.ModelSelect />
-              <Prompt.RatioSelect />
-              <Prompt.DurationSelect />
+            <Prompt.TextInput />
+            <div className={styles.promptBar}>
+              <div className={styles.promptSettings}>
+                <Prompt.GenerationTypeToggle />
+                <Prompt.ModelSelect />
+                <Prompt.RatioSelect />
+                <Prompt.DurationSelect />
+                <Prompt.AudioSelect />
+              </div>
               <Prompt.Actions />
             </div>
           </Prompt.Root>
@@ -63,13 +66,16 @@ export default function ChatClient() {
       <div className={styles.newPromptSection}>
         <Prompt.Root key="new" onGenerate={createPrompt}>
           <Prompt.MediaItem />
-          <Prompt.TextInput placeholder="Enter your prompt..." />
           <Prompt.MediaInput />
-          <div className={styles.promptActions}>
-            <Prompt.GenerationTypeToggle />
-            <Prompt.ModelSelect />
-            <Prompt.RatioSelect />
-            <Prompt.DurationSelect />
+          <Prompt.TextInput placeholder="Enter your prompt..." />
+          <div className={styles.promptBar}>
+            <div className={styles.promptSettings}>
+              <Prompt.GenerationTypeToggle />
+              <Prompt.ModelSelect />
+              <Prompt.RatioSelect />
+              <Prompt.DurationSelect />
+              <Prompt.AudioSelect />
+            </div>
             <Prompt.Actions />
           </div>
         </Prompt.Root>

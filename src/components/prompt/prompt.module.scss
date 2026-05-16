@@ -348,21 +348,6 @@
         color: var(--secondary-foreground);
       }
     }
-
-    & .referencesButton {
-      border: none;
-      background-color: transparent;
-      color: var(--primary);
-      border-radius: 40px;
-      box-shadow: none;
-      font-size: 16px;
-      font-weight: 400;
-
-      &:hover {
-        background-color: var(--secondary-background);
-        color: var(--secondary-foreground);
-      }
-    }
   }
 }
 
@@ -370,6 +355,7 @@
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
 
   & .generateButton {
@@ -429,4 +415,53 @@
   font-size: 0.75rem;
   color: var(--color-text-secondary, #888);
   margin: 0;
+}
+
+// ---------------------------------------------------------------------------
+// Reference file drop zone (input mode)
+// ---------------------------------------------------------------------------
+
+.mediaDropZone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  background-color: transparent;
+
+  &:hover {
+    border-color: var(--foreground);
+
+    & .mediaDropZoneLabel {
+      color: var(--foreground);
+    }
+  }
+}
+
+.mediaDropZoneDragging {
+  border-color: var(--foreground);
+  background-color: var(--secondary-background);
+}
+
+.mediaDropZoneInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 0;
+}
+
+.mediaDropZoneLabel {
+  pointer-events: none;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--muted-foreground);
+  user-select: none;
 }

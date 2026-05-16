@@ -2,6 +2,13 @@
 
 import { Input } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select"
 import { usePromptContext } from "./context"
 
 import styles from "./prompt.module.scss"
@@ -16,10 +23,10 @@ export default function PromptMediaItem() {
     modelConfig,
     existingMedia,
     newFiles,
-    showReferences,
     removeExistingMedia,
     removeNewFile,
     updateTag,
+    updatePosition,
   } = usePromptContext()
 
   if (mode === "view" || mode === "loading") return null
@@ -27,11 +34,15 @@ export default function PromptMediaItem() {
   const tagsAllowed =
     modelConfig.inputs.kind === "standard" && modelConfig.inputs.tagsAllowed
 
+  const positionsRequired =
+    modelConfig.inputs.kind === "standard" && modelConfig.inputs.positionsRequired
+
+  const supportsLastFrame = modelConfig.supportsLastFrame === true
+
   const hasExisting = existingMedia.length > 0
   const hasNew = newFiles.length > 0
 
   if (!hasExisting && !hasNew) return null
-  if (!showReferences && !hasExisting) return null
 
   return (
     <>
@@ -46,6 +57,7 @@ export default function PromptMediaItem() {
         {existingMedia.map((m, index) => (
           <div key={`existing-${index}`} className={styles.mediaItem}>
             {m.type === "image" ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={m.url} alt="" className={styles.previewMedia} />
             ) : (
               <video src={m.url} className={styles.previewMedia} />
@@ -58,6 +70,28 @@ export default function PromptMediaItem() {
                 maxLength={16}
                 className={styles.tagInput}
               />
+            )}
+            {positionsRequired && (
+              <Select
+                value={m.position ?? "first"}
+                onValueChange={(v) =>
+                  updatePosition(
+                    index,
+                    v === "last" ? "last" : v === "first" ? "first" : null,
+                    true,
+                  )
+                }
+              >
+                <SelectTrigger className={styles.tagInput}>
+                  <SelectValue placeholder="Frame" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="first">First frame</SelectItem>
+                  {supportsLastFrame && (
+                    <SelectItem value="last">Last frame</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             )}
             <Button
               type="button"
@@ -73,6 +107,7 @@ export default function PromptMediaItem() {
         {newFiles.map((item, index) => (
           <div key={`new-${index}`} className={styles.mediaItem}>
             {item.file.type.startsWith("image/") ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={item.preview} alt="" className={styles.previewMedia} />
             ) : (
               <video src={item.preview} className={styles.previewMedia} />
@@ -85,6 +120,28 @@ export default function PromptMediaItem() {
                 maxLength={16}
                 className={styles.tagInput}
               />
+            )}
+            {positionsRequired && (
+              <Select
+                value={item.position ?? "first"}
+                onValueChange={(v) =>
+                  updatePosition(
+                    index,
+                    v === "last" ? "last" : v === "first" ? "first" : null,
+                    false,
+                  )
+                }
+              >
+                <SelectTrigger className={styles.tagInput}>
+                  <SelectValue placeholder="Frame" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="first">First frame</SelectItem>
+                  {supportsLastFrame && (
+                    <SelectItem value="last">Last frame</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             )}
             <Button
               type="button"
