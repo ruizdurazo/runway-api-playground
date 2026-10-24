@@ -3,7 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { getMediaViewUrl } from "@/lib/media-view-url"
-import { validateModelInputs, getModelById, mergeAdditionalParams } from "@runway-playground/shared"
+import {
+  validateModelInputs,
+  getModelById,
+  mergeAdditionalParams,
+  promptTextIsRequired,
+  selectEndpoint,
+} from "@runway-playground/shared"
 import type { Prompt, MediaItem, GeneratePayload, EditPayload } from "@/lib/types"
 
 // ---------------------------------------------------------------------------
@@ -100,7 +106,9 @@ export function usePrompts(chatId: string) {
       const { text, model, generationType, filesWithTags, ratio, additionalParams } =
         payload
 
-      if (!text && model !== "upscale_v1") throw new Error("Prompt is required")
+      if (promptTextIsRequired(model, filesWithTags.length) && !text) {
+        throw new Error("Prompt is required")
+      }
 
       const {
         data: { user },
@@ -111,27 +119,27 @@ export function usePrompts(chatId: string) {
       if (!apiKey) throw new Error("Runway API key not set in settings")
 
       const mergedForValidate = mergeAdditionalParams(model, additionalParams ?? null)
-      const willHaveFileInputs = filesWithTags.length > 0
       const inputDef = getModelById(model)
+      const validationInputs = filesWithTags.map((f) => ({
+        type: f.file.type.startsWith("image/")
+          ? ("image" as const)
+          : ("video" as const),
+        tag:
+          inputDef.inputs.kind === "standard" && inputDef.inputs.tagsAllowed
+            ? f.tag ?? undefined
+            : inputDef.inputs.kind === "named"
+              ? f.tag ?? undefined
+              : undefined,
+        position: f.position ?? undefined,
+      }))
       const usingTextOnly =
-        !willHaveFileInputs && Boolean(inputDef.textOnlyEndpoint)
+        selectEndpoint(model, validationInputs) === inputDef.textOnlyEndpoint
 
       validateModelInputs(
         model,
         generationType,
         text,
-        filesWithTags.map((f) => ({
-          type: f.file.type.startsWith("image/")
-            ? ("image" as const)
-            : ("video" as const),
-          tag:
-            inputDef.inputs.kind === "standard" && inputDef.inputs.tagsAllowed
-              ? f.tag ?? undefined
-              : inputDef.inputs.kind === "named"
-                ? f.tag ?? undefined
-                : undefined,
-          position: f.position ?? undefined,
-        })),
+        validationInputs,
         ratio,
         mergedForValidate,
         { usingTextOnlyEndpoint: usingTextOnly },
@@ -206,6 +214,7 @@ export function usePrompts(chatId: string) {
             return {
               url: signedData.signedUrl,
               tag: storageTag ?? "",
+              type,
               ...(item.position ? { position: item.position } : {}),
             }
           }),
@@ -257,38 +266,35 @@ export function usePrompts(chatId: string) {
       } = payload
 
       const mergedForValidate = mergeAdditionalParams(model, additionalParams ?? null)
-      const willHaveFileInputs =
-        existingMedia.length + newFilesWithTags.length > 0
       const inputDef = getModelById(model)
-      const usingTextOnly =
-        !willHaveFileInputs && Boolean(inputDef.textOnlyEndpoint)
-
       const tagForValidation = (raw: string | null | undefined) =>
         inputDef.inputs.kind === "standard" && inputDef.inputs.tagsAllowed
           ? raw ?? undefined
           : inputDef.inputs.kind === "named"
             ? raw ?? undefined
             : undefined
+      const editInputs = [
+        ...existingMedia.map((m) => ({
+          type: m.type ?? ("image" as const),
+          url: m.url,
+          tag: tagForValidation(m.tag),
+          position: m.position ?? undefined,
+        })),
+        ...newFilesWithTags.map((f) => ({
+          type: f.file.type.startsWith("image/")
+            ? ("image" as const)
+            : ("video" as const),
+          tag: tagForValidation(f.tag),
+          position: f.position ?? undefined,
+        })),
+      ]
+      const usingTextOnly = selectEndpoint(model, editInputs) === inputDef.textOnlyEndpoint
 
       validateModelInputs(
         model,
         generationType,
         text,
-        [
-          ...existingMedia.map((m) => ({
-            type: m.type ?? ("image" as const),
-            url: m.url,
-            tag: tagForValidation(m.tag),
-            position: m.position ?? undefined,
-          })),
-          ...newFilesWithTags.map((f) => ({
-            type: f.file.type.startsWith("image/")
-              ? ("image" as const)
-              : ("video" as const),
-            tag: tagForValidation(f.tag),
-            position: f.position ?? undefined,
-          })),
-        ],
+        editInputs,
         ratio,
         mergedForValidate,
         { usingTextOnlyEndpoint: usingTextOnly },
@@ -428,24 +434,30 @@ export function usePrompts(chatId: string) {
         prompt.model,
         generateOptions?.additionalParams ?? null,
       )
-      const hasAssets = inputMedia.length > 0
+      const modelDef = getModelById(prompt.model)
+      const positionsRequired =
+        modelDef.inputs.kind === "standard" && modelDef.inputs.positionsRequired
+      const regenInputs = inputMedia.map((m) => ({
+        type: (m.type ?? "image") as "image" | "video",
+        tag: m.tag,
+        position: positionsRequired
+          ? m.position === "last"
+            ? ("last" as const)
+            : ("first" as const)
+          : m.position === "last"
+            ? ("last" as const)
+            : m.position === "first"
+              ? ("first" as const)
+              : undefined,
+      }))
       const usingTextOnly =
-        !hasAssets && Boolean(getModelById(prompt.model).textOnlyEndpoint)
+        selectEndpoint(prompt.model, regenInputs) === modelDef.textOnlyEndpoint
 
       validateModelInputs(
         prompt.model,
         prompt.generation_type,
         prompt.prompt_text,
-        inputMedia.map((m) => ({
-          type: (m.type ?? "image") as "image" | "video",
-          tag: m.tag,
-          position:
-            m.position === "last"
-              ? ("last" as const)
-              : m.position === "first"
-                ? ("first" as const)
-                : ("first" as const),
-        })),
+        regenInputs,
         prompt.ratio,
         mergedForValidate,
         { usingTextOnlyEndpoint: usingTextOnly },
@@ -466,6 +478,7 @@ export function usePrompts(chatId: string) {
           return {
             url: signedData.signedUrl,
             tag: m.tag ?? "",
+            type: (m.type === "video" ? "video" : "image") as "image" | "video",
             ...(pos ? { position: pos } : {}),
           }
         }),

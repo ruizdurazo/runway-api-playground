@@ -38,6 +38,9 @@ export default function PromptMediaItem() {
     modelConfig.inputs.kind === "standard" && modelConfig.inputs.positionsRequired
 
   const supportsLastFrame = modelConfig.supportsLastFrame === true
+  const flexibleImageRole =
+    modelConfig.inputs.kind === "standard" &&
+    modelConfig.inputs.flexibleImageRole === true
 
   const hasExisting = existingMedia.length > 0
   const hasNew = newFiles.length > 0
@@ -50,6 +53,11 @@ export default function PromptMediaItem() {
         <p className={styles.referenceHint}>
           Use tag names in your prompt to reference images (e.g. &ldquo;a photo of &lt;ref1&gt;&rdquo;).
           Leave empty for auto-assigned tags.
+        </p>
+      )}
+      {flexibleImageRole && (hasExisting || hasNew) && (
+        <p className={styles.referenceHint}>
+          Images are references unless you mark a first and last frame. A video switches to video-to-video.
         </p>
       )}
 
@@ -86,6 +94,29 @@ export default function PromptMediaItem() {
                   <SelectValue placeholder="Frame" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="first">First frame</SelectItem>
+                  {supportsLastFrame && (
+                    <SelectItem value="last">Last frame</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+            {flexibleImageRole && m.type === "image" && (
+              <Select
+                value={m.position ?? "reference"}
+                onValueChange={(v) =>
+                  updatePosition(
+                    index,
+                    v === "last" ? "last" : v === "first" ? "first" : null,
+                    true,
+                  )
+                }
+              >
+                <SelectTrigger className={styles.tagInput}>
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="reference">Reference</SelectItem>
                   <SelectItem value="first">First frame</SelectItem>
                   {supportsLastFrame && (
                     <SelectItem value="last">Last frame</SelectItem>
@@ -136,6 +167,29 @@ export default function PromptMediaItem() {
                   <SelectValue placeholder="Frame" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="first">First frame</SelectItem>
+                  {supportsLastFrame && (
+                    <SelectItem value="last">Last frame</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            )}
+            {flexibleImageRole && item.file.type.startsWith("image/") && (
+              <Select
+                value={item.position ?? "reference"}
+                onValueChange={(v) =>
+                  updatePosition(
+                    index,
+                    v === "last" ? "last" : v === "first" ? "first" : null,
+                    false,
+                  )
+                }
+              >
+                <SelectTrigger className={styles.tagInput}>
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="reference">Reference</SelectItem>
                   <SelectItem value="first">First frame</SelectItem>
                   {supportsLastFrame && (
                     <SelectItem value="last">Last frame</SelectItem>

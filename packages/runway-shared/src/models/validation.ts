@@ -33,7 +33,10 @@ export function validateModelInputs(
   }
 
   // Prompt text
-  if (config.prompt.required && !promptText) {
+  const promptRequired =
+    config.prompt.required ||
+    (config.prompt.requiredWithoutInputs === true && inputs.length === 0)
+  if (promptRequired && !promptText) {
     throw new Error(`Prompt text is required for ${config.displayName}`)
   }
   if (
@@ -60,6 +63,26 @@ export function validateModelInputs(
     )
   }
 
+  if (config.keyframeRatios && inputs.some((input) => input.position)) {
+    if (!config.keyframeRatios.some((r) => r === ratio)) {
+      throw new Error(
+        `Keyframe mode for ${config.displayName} requires ratio ${config.keyframeRatios.join(", ")}`,
+      )
+    }
+  }
+
+  if (additionalParams?.mode === "extend" && !promptText) {
+    throw new Error(`Extend mode requires a prompt for ${config.displayName}`)
+  }
+
+  if (config.videoProfile === "gemini_omni") {
+    const imageCount = inputs.filter((input) => input.type === "image").length
+    const videoCount = inputs.filter((input) => input.type === "video").length
+    if (videoCount === 0 && imageCount > 1) {
+      throw new Error(`${config.displayName} accepts a single first-frame image`)
+    }
+  }
+
   // Input validation
   validateInputs(
     config.inputs,
@@ -81,7 +104,18 @@ export function validateModelInputs(
         continue
       }
 
-      if (paramConfig.options && !paramConfig.options.includes(value as number)) {
+      if (paramConfig.allowAuto && value === "auto") continue
+
+      if (typeof paramConfig.default === "string") {
+        if (typeof value !== "string") {
+          throw new Error(`"${key}" must be a string for ${config.displayName}`)
+        }
+      }
+
+      if (
+        paramConfig.options &&
+        !paramConfig.options.some((option) => option === value)
+      ) {
         throw new Error(
           `Invalid value for "${key}" in ${config.displayName}. Allowed: ${paramConfig.options.join(", ")}`,
         )
@@ -140,11 +174,22 @@ function validateStandardInputs(
     )
   }
 
+  const images = inputs.filter((input) => input.type === "image")
+  const videos = inputs.filter((input) => input.type === "video")
+  if (config.maxImages !== undefined && images.length > config.maxImages) {
+    throw new Error(`${modelName} allows at most ${config.maxImages} images`)
+  }
+  if (config.maxVideos !== undefined && videos.length > config.maxVideos) {
+    throw new Error(`${modelName} allows at most ${config.maxVideos} videos`)
+  }
+
   for (const [i, input] of inputs.entries()) {
     if (!input.type) {
       throw new Error(`Input ${i + 1} is missing a type`)
     }
-    if (input.type !== config.type) {
+    const typeAllowed =
+      config.type === "media" || input.type === config.type
+    if (!typeAllowed) {
       throw new Error(
         `Input ${i + 1} must be ${config.type} for ${modelName}`,
       )
@@ -194,6 +239,35 @@ function validateStandardInputs(
     if (count === 2 && (first !== 1 || last !== 1)) {
       throw new Error(
         `Two images require exactly one "first" and one "last" position for ${modelName}`,
+      )
+    }
+  }
+
+  if (config.flexibleImageRole) {
+    const positioned = images.filter((input) => input.position)
+    if (positioned.length > 0 && positioned.length !== images.length) {
+      throw new Error(
+        `${modelName} cannot mix reference images with first/last frames`,
+      )
+    }
+    if (positioned.length > 0 && videos.length > 0) {
+      throw new Error(
+        `${modelName} cannot combine keyframes with a video input`,
+      )
+    }
+    if (positioned.length > 2) {
+      throw new Error(`${modelName} allows at most two keyframe images`)
+    }
+    const first = positioned.filter((input) => input.position === "first").length
+    const last = positioned.filter((input) => input.position === "last").length
+    if (first > 1 || last > 1) {
+      throw new Error(
+        `${modelName} allows one first frame and one last frame`,
+      )
+    }
+    if (positioned.length === 1 && positioned[0]?.position === "last") {
+      throw new Error(
+        `A single keyframe must be the first frame for ${modelName}`,
       )
     }
   }

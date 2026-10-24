@@ -76,26 +76,6 @@
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
-
-  &[data-state="open"] {
-    animation:
-      fadeIn 0.2s,
-      zoomIn 0.2s;
-  }
-
-  &[data-state="closed"] {
-    animation:
-      fadeOut 0.2s,
-      zoomOut 0.2s;
-  }
-
-  &[data-side="bottom"] {
-    animation: slideInFromTop 0.2s;
-  }
-
-  // Add other sides similarly...
-
-  transform-origin: var(--radix-select-content-transform-origin);
 }
 
 .selectContentPopper {
@@ -143,7 +123,9 @@
   font-size: 0.875rem;
   outline: none;
 
-  &:focus-visible {
+  &:hover,
+  &:focus-visible,
+  &[data-highlighted] {
     background-color: var(--secondary-background);
     color: var(--secondary-foreground);
   }

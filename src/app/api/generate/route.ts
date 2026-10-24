@@ -6,6 +6,7 @@ import {
   getStrategy,
   mergeAdditionalParams,
   resolveModel,
+  selectEndpoint,
   validateModelInputs,
 } from "@runway-playground/shared"
 
@@ -41,7 +42,12 @@ export async function POST(request: NextRequest) {
     promptId?: string
     model?: string
     generationType?: string
-    assets?: { url: string; tag?: string; position?: "first" | "last" }[]
+    assets?: {
+      url: string
+      tag?: string
+      position?: "first" | "last"
+      type?: "image" | "video"
+    }[]
     ratio?: string
     additionalParams?: Record<string, unknown>
   }
@@ -102,9 +108,9 @@ export async function POST(request: NextRequest) {
       }
     }) || []
 
-  const hasAssets = Array.isArray(assets) && assets.length > 0
-  const usingTextOnlyEndpoint =
-    !hasAssets && Boolean(modelDef.textOnlyEndpoint)
+  const requestAssets = assets ?? []
+  const endpoint = selectEndpoint(model, requestAssets)
+  const usingTextOnlyEndpoint = endpoint === modelDef.textOnlyEndpoint
 
   const mergedAdditional = mergeAdditionalParams(model, additionalOverrides ?? null)
 
@@ -126,20 +132,15 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // ---- Determine strategy --------------------------------------------------
-  const endpoint =
-    usingTextOnlyEndpoint && modelDef.textOnlyEndpoint
-      ? modelDef.textOnlyEndpoint
-      : modelDef.endpoint
-
   const strategy = getStrategy(endpoint)
 
   // ---- Execute strategy ----------------------------------------------------
   try {
     const client = new RunwayML({ apiKey })
-    const strategyAssets = (assets ?? []).map((a) => ({
+    const strategyAssets = requestAssets.map((a) => ({
       url: a.url,
       tag: a.tag ?? "",
+      type: a.type ?? "image",
       ...(a.position ? { position: a.position } : {}),
     }))
 

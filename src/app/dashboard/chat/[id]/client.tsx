@@ -55,6 +55,7 @@ export default function ChatClient() {
                 <Prompt.RatioSelect />
                 <Prompt.DurationSelect />
                 <Prompt.AudioSelect />
+                <Prompt.SettingSelect />
               </div>
               <Prompt.Actions />
             </div>
@@ -75,6 +76,7 @@ export default function ChatClient() {
               <Prompt.RatioSelect />
               <Prompt.DurationSelect />
               <Prompt.AudioSelect />
+              <Prompt.SettingSelect />
             </div>
             <Prompt.Actions />
           </div>

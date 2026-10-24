@@ -7,6 +7,7 @@ import PromptGenerationTypeToggle from "./PromptGenerationTypeToggle"
 import PromptRatioSelect from "./PromptRatioSelect"
 import PromptDurationSelect from "./PromptDurationSelect"
 import PromptAudioSelect from "./PromptAudioSelect"
+import PromptSettingSelect from "./PromptSettingSelect"
 import PromptOutput from "./PromptOutput"
 import PromptActions from "./PromptActions"
 import PromptHeader from "./PromptHeader"
@@ -21,6 +22,7 @@ export const Prompt = {
   RatioSelect: PromptRatioSelect,
   DurationSelect: PromptDurationSelect,
   AudioSelect: PromptAudioSelect,
+  SettingSelect: PromptSettingSelect,
   Output: PromptOutput,
   Actions: PromptActions,
   Header: PromptHeader,

@@ -7,6 +7,7 @@ const eslintConfig = [
       "node_modules/**",
       "packages/runway-mcp/dist/**",
       "packages/runway-mcp/.mcp-use/**",
+      "packages/runway-shared/dist/**",
     ],
   },
   ...nextCoreWebVitals,

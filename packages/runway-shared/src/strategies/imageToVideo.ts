@@ -1,6 +1,7 @@
 import { ensureRunwayImageUri } from "../ensure-runway-image-uri.js"
 import { getModelById } from "../models/registry.js"
 import type { Model } from "../models/registry.js"
+import { executeProfiledVideo } from "./multimodal-video.js"
 import type { GenerationStrategy, GenerationParams, GenerationResult } from "./types.js"
 
 function numericParam(value: unknown, fallback: number): number {
@@ -17,6 +18,9 @@ const INTERMEDIATE_FIRST_FRAME_RATIO = "1280:720" as const
 
 export const imageToVideoStrategy: GenerationStrategy = {
   async execute(params: GenerationParams): Promise<GenerationResult> {
+    const profiled = await executeProfiledVideo(params, "image_to_video")
+    if (profiled) return profiled
+
     const { client, model, promptText, assets, ratio, additionalParams } = params
     const modelDef = getModelById(model as Model)
     const supportsLastFrame = modelDef.supportsLastFrame === true
@@ -41,11 +45,11 @@ export const imageToVideoStrategy: GenerationStrategy = {
 
       const imageUrl = imageTask.output?.[0]
       if (!imageUrl) throw new Error("Failed to generate intermediate image")
-      promptImage = await ensureRunwayImageUri(imageUrl)
+      promptImage = await ensureRunwayImageUri(imageUrl, client)
     } else {
       const imageAssets = await Promise.all(
         assets.map(async (a) => ({
-          url: await ensureRunwayImageUri(a.url),
+          url: await ensureRunwayImageUri(a.url, client),
           position: a.position,
         })),
       )

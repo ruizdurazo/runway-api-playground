@@ -12,9 +12,9 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
+    "types": ["node", "react"],
     "incremental": true,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "baseUrl": "."
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["index.ts", "resources/**/*", ".mcp-use/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]

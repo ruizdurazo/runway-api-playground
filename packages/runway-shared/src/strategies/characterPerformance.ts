@@ -1,3 +1,4 @@
+import { ensureRunwayImageUri } from "../ensure-runway-image-uri.js"
 import type { GenerationStrategy, GenerationParams, GenerationResult } from "./types.js"
 
 export const characterPerformanceStrategy: GenerationStrategy = {
@@ -15,14 +16,16 @@ export const characterPerformanceStrategy: GenerationStrategy = {
     }
 
     // Determine if the character input is an image or video based on the URL
-    const isVideo = characterAsset.url.match(/\.(mp4|webm|mov)(\?|$)/i)
+    const isVideo =
+      characterAsset.type === "video" ||
+      Boolean(characterAsset.url.match(/\.(mp4|webm|mov)(\?|$)/i))
     const character = isVideo
-      ? { type: "video" as const, uri: characterAsset.url }
-      : { type: "image" as const, uri: characterAsset.url }
+      ? { type: "video" as const, uri: await ensureRunwayImageUri(characterAsset.url, client) }
+      : { type: "image" as const, uri: await ensureRunwayImageUri(characterAsset.url, client) }
 
     const reference = {
       type: "video" as const,
-      uri: referenceAsset.url,
+      uri: await ensureRunwayImageUri(referenceAsset.url, client),
     }
 
     const task = await client.characterPerformance

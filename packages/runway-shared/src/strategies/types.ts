@@ -4,6 +4,7 @@ export interface Asset {
   url: string
   tag: string
   position?: "first" | "last"
+  type?: "image" | "video"
 }
 
 export interface GenerationParams {

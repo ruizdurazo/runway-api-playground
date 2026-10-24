@@ -1,3 +1,4 @@
+import { ensureRunwayImageUri } from "../ensure-runway-image-uri.js"
 import type { GenerationStrategy, GenerationParams, GenerationResult } from "./types.js"
 
 export const videoUpscaleStrategy: GenerationStrategy = {
@@ -8,8 +9,13 @@ export const videoUpscaleStrategy: GenerationStrategy = {
       throw new Error("Upscale requires exactly one video input")
     }
 
+    const resolution = params.additionalParams?.resolution
     const submitted = await client.post("/v1/video_upscale", {
-      body: { model: "upscale_v1", videoUri: assets[0].url },
+      body: {
+        model: params.model,
+        videoUri: await ensureRunwayImageUri(assets[0].url, client),
+        ...(typeof resolution === "string" ? { resolution } : {}),
+      },
     })
     const { id } = (await submitted) as { id: string }
     const task = await client.tasks.retrieve(id).waitForTaskOutput()

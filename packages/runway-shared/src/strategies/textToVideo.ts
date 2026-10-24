@@ -1,5 +1,6 @@
 import { getModelById } from "../models/registry.js"
 import type { Model } from "../models/registry.js"
+import { executeProfiledVideo } from "./multimodal-video.js"
 import type { GenerationStrategy, GenerationParams, GenerationResult } from "./types.js"
 
 function numericParam(value: unknown, fallback: number): number {
@@ -13,6 +14,9 @@ function numericParam(value: unknown, fallback: number): number {
 
 export const textToVideoStrategy: GenerationStrategy = {
   async execute(params: GenerationParams): Promise<GenerationResult> {
+    const profiled = await executeProfiledVideo(params, "text_to_video")
+    if (profiled) return profiled
+
     const { client, model, promptText, ratio, additionalParams } = params
     const modelDef = getModelById(model as Model)
 

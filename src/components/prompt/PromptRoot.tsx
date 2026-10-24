@@ -79,7 +79,7 @@ export default function PromptRoot({
       } catch {
         // Unknown model in DB -- fall through to default
       }
-      const validModels = getModelsByGenerationType(gt)
+      const validModels = getModelsByGenerationType(gt, { includeUnlisted: true })
       if (!validModels.some((vm) => vm.id === m)) {
         m = validModels[0]?.id ?? "gen4_turbo"
       }
@@ -126,7 +126,7 @@ export default function PromptRoot({
     const savedType = localStorage.getItem("lastGenerationType") as GenerationType | null
     const gt: GenerationType =
       savedType && ["video", "image"].includes(savedType) ? savedType : "video"
-    const validModels = getModelsByGenerationType(gt)
+      const validModels = getModelsByGenerationType(gt, { includeUnlisted: true })
     const savedModel = localStorage.getItem("lastModel")
     // Only use saved model if it's a valid key in the current registry
     const m =
@@ -184,7 +184,7 @@ export default function PromptRoot({
         try { resolved = resolveModel(m) } catch { resolved = "gen4_turbo" }
       }
       setModelRaw(resolved)
-      if (resolved === "upscale_v1") {
+      if (MODEL_REGISTRY[resolved]?.category === "upscale") {
         setText("")
         setGenerationTypeRaw("video")
       }
@@ -201,7 +201,9 @@ export default function PromptRoot({
 
   // Ensure model is always valid for the current generation type
   useEffect(() => {
-    const validModels = getModelsByGenerationType(generationType)
+    const validModels = getModelsByGenerationType(generationType, {
+      includeUnlisted: true,
+    })
     if (!validModels.some((vm) => vm.id === model)) {
       setModelRaw(validModels[0]?.id ?? "gen4_turbo")
     }

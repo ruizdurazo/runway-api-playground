@@ -13,7 +13,6 @@ interface PromptTextInputProps {
 export default function PromptTextInput({ placeholder }: PromptTextInputProps) {
   const {
     mode,
-    model,
     modelConfig,
     text,
     setText,
@@ -24,7 +23,7 @@ export default function PromptTextInput({ placeholder }: PromptTextInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const isHidden =
-    model === "upscale_v1" || mode === "view" || mode === "loading"
+    modelConfig.category === "upscale" || mode === "view" || mode === "loading"
 
   const resize = (el: HTMLTextAreaElement | null) => {
     if (!el) return
@@ -81,7 +80,11 @@ export default function PromptTextInput({ placeholder }: PromptTextInputProps) {
       onPaste={handlePaste}
       placeholder={
         placeholder ??
-        (mode === "edit" ? "Edit your prompt..." : "Enter your prompt...")
+        (!modelConfig.prompt.required
+          ? "Prompt (optional when you add references)"
+          : mode === "edit"
+            ? "Edit your prompt..."
+            : "Enter your prompt...")
       }
     />
   )

@@ -15,6 +15,14 @@ function coerceAdditionalParamValues(
       else if (raw === false || raw === "false") merged[key] = false
       continue
     }
+    if (pc.allowAuto && raw === "auto") {
+      merged[key] = "auto"
+      continue
+    }
+    if (typeof pc.default === "string") {
+      if (typeof raw === "string") merged[key] = raw
+      continue
+    }
     if (typeof pc.default === "number" && typeof raw === "string" && raw.trim() !== "") {
       const n = Number(raw)
       if (!Number.isNaN(n)) merged[key] = n

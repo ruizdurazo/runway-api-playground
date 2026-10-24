@@ -1,14 +1,19 @@
 import { ensureRunwayImageUri } from "../ensure-runway-image-uri.js"
+import { getModelById } from "../models/registry.js"
+import type { Model } from "../models/registry.js"
 import type { GenerationStrategy, GenerationParams, GenerationResult } from "./types.js"
 
 export const textToImageStrategy: GenerationStrategy = {
   async execute(params: GenerationParams): Promise<GenerationResult> {
     const { client, model, promptText, assets, ratio, additionalParams } = params
+    const modelDef = getModelById(model as Model)
+    const tagsAllowed =
+      modelDef.inputs.kind === "standard" && modelDef.inputs.tagsAllowed
 
     let effectiveModel = model
     const referenceImages = assets.map((a, index) => ({
       uri: a.url,
-      tag: a.tag || `ref${index + 1}`,
+      ...(tagsAllowed ? { tag: a.tag || `ref${index + 1}` } : {}),
     }))
 
     // gen4_image with references should use gen4_image_turbo
@@ -26,7 +31,7 @@ export const textToImageStrategy: GenerationStrategy = {
       createParams.referenceImages = await Promise.all(
         referenceImages.map(async (ref) => ({
           ...ref,
-          uri: await ensureRunwayImageUri(ref.uri),
+          uri: await ensureRunwayImageUri(ref.uri, client),
         })),
       )
     }

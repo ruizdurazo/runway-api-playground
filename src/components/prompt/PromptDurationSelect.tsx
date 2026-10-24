@@ -14,19 +14,24 @@ import styles from "./prompt.module.scss"
 
 function durationOptionValues(
   durationParam: NonNullable<ModelDefinition["additionalParams"]>["duration"],
-): number[] | null {
-  if (durationParam.options && durationParam.options.length > 0) {
-    return [...durationParam.options]
-  }
-  if (
+): string[] | null {
+  const numeric = durationParam.options?.filter(
+    (option): option is number => typeof option === "number",
+  )
+  let values: string[] | null = null
+  if (numeric && numeric.length > 0) {
+    values = numeric.map(String)
+  } else if (
     durationParam.min !== undefined &&
     durationParam.max !== undefined
   ) {
-    const out: number[] = []
-    for (let v = durationParam.min; v <= durationParam.max; v++) out.push(v)
-    return out
+    const out: string[] = []
+    for (let v = durationParam.min; v <= durationParam.max; v++) out.push(String(v))
+    values = out
   }
-  return null
+  if (!values) return null
+  if (durationParam.allowAuto) return ["auto", ...values]
+  return values
 }
 
 /**
@@ -44,21 +49,26 @@ export default function PromptDurationSelect() {
   const optionValues = durationOptionValues(durationParam)
   if (!optionValues || optionValues.length <= 1) return null
 
-  const defaultNum =
-    typeof durationParam.default === "number" ? durationParam.default : 8
+  const defaultValue =
+    durationParam.default === "auto"
+      ? "auto"
+      : String(
+          typeof durationParam.default === "number" ? durationParam.default : 5,
+        )
   const effective =
-    generationOptions.duration !== undefined &&
-    typeof generationOptions.duration === "number"
-      ? generationOptions.duration
-      : defaultNum
+    generationOptions.duration === "auto"
+      ? "auto"
+      : typeof generationOptions.duration === "number"
+        ? String(generationOptions.duration)
+        : defaultValue
 
   return (
     <Select
-      value={String(effective)}
+      value={effective}
       onValueChange={(v) =>
         setGenerationOptions((prev) => ({
           ...prev,
-          duration: Number(v),
+          duration: v === "auto" ? "auto" : Number(v),
         }))
       }
     >
@@ -67,8 +77,8 @@ export default function PromptDurationSelect() {
       </SelectTrigger>
       <SelectContent>
         {optionValues.map((d) => (
-          <SelectItem key={d} value={String(d)}>
-            {d}s
+          <SelectItem key={d} value={d}>
+            {d === "auto" ? "Auto" : `${d}s`}
           </SelectItem>
         ))}
       </SelectContent>
